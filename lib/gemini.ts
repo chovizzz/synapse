@@ -1,11 +1,59 @@
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
+// 自动检测使用哪个 AI 提供商
+// 优先级：DeepSeek > Gemini（哪个 Key 存在就用哪个）
+const DEEPSEEK_KEY =
+  process.env.DEEPSEEK_API_KEY || process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY || "";
+const GEMINI_KEY =
+  process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
 
+const useDeepSeek = !!DEEPSEEK_KEY;
+
+// Gemini 客户端（仅在使用 Gemini 时初始化）
 let _ai: GoogleGenAI | null = null;
-function getAI(): GoogleGenAI {
-  if (!_ai) _ai = new GoogleGenAI({ apiKey });
+function getGemini(): GoogleGenAI {
+  if (!_ai) _ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
   return _ai;
+}
+
+// 统一 AI 调用入口，自动路由到 DeepSeek 或 Gemini
+async function callAI(systemPrompt: string, userMessage: string): Promise<string> {
+  if (useDeepSeek) {
+    // DeepSeek（OpenAI 兼容接口）
+    const res = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${DEEPSEEK_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
+        max_tokens: 1024,
+      }),
+    });
+    if (!res.ok) throw new Error(`DeepSeek API error: ${res.status}`);
+    const json = await res.json();
+    return json.choices?.[0]?.message?.content || "{}";
+  } else {
+    // Gemini Flash
+    const ai = getGemini();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: userMessage,
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        temperature: 0.1,
+      },
+    });
+    return response.text || "{}";
+  }
 }
 
 // M1: 需求解析 Prompt
@@ -63,33 +111,22 @@ export const EVALUATE_SYSTEM_PROMPT = `你是拥有5年以上 Facebook、TikTok�
 
 // 解析需求（M1）
 export async function parseRequirement(rawInput: string) {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: `请从以下客户原话中提取广告投放需求信息：\n\n"${rawInput}"`,
-    config: {
-      systemInstruction: PARSE_SYSTEM_PROMPT,
-      responseMimeType: "application/json",
-      temperature: 0.1,
-    },
-  });
-  const text = response.text || "{}";
+  const text = await callAI(
+    PARSE_SYSTEM_PROMPT,
+    `请从以下客户原话中提取广告投放需求信息：\n\n"${rawInput}"`
+  );
   return JSON.parse(text);
 }
 
 // 生成评估（M2）
 export async function evaluateRequirement(structuredData: Record<string, unknown>) {
-  const ai = getAI();
   const dataStr = JSON.stringify(structuredData, null, 2);
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: `请对以下广告投放需求进行专业评估：\n\n${dataStr}`,
-    config: {
-      systemInstruction: EVALUATE_SYSTEM_PROMPT,
-      responseMimeType: "application/json",
-      temperature: 0.2,
-    },
-  });
-  const text = response.text || "{}";
+  const text = await callAI(
+    EVALUATE_SYSTEM_PROMPT,
+    `请对以下广告投放需求进行专业评估：\n\n${dataStr}`
+  );
   return JSON.parse(text);
 }
+
+// 导出当前使用的提供商，方便调试
+export const AI_PROVIDER = useDeepSeek ? "DeepSeek" : "Gemini";
