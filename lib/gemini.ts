@@ -62,16 +62,57 @@ export const PARSE_SYSTEM_PROMPT = `你是广告代投公司的AI需求助理，
 
 【平台缩写识别表 — 必须标准化输出】
 TT / tt / tiktok / 抖音海外 → TikTok
+TTCX → TTCX
 FB / fb / facebook / 脸书 → Facebook
 IG / ig / instagram / ins → Instagram
-FB+IG / Meta → Facebook & Instagram
+FB+IG / Meta / meta → Meta(Facebook & Instagram)
 GG / GA / google / 谷歌 → Google Ads
+DV360 / Google-DV360 → Google DV360
 YT / youtube / 油管 → YouTube
 Snap / SC / snapchat → Snapchat
-TW / tw / twitter / X → X(Twitter)
-Kwai / 快手 → Kwai
+TW / tw / twitter / X / 推特 → X(Twitter)
+Kwai / kwai / 快手海外 → Kwai
 BAI / 百度 → 百度推广
-多平台时用"/"连接，如 "Facebook & TikTok"
+Bing / bing / 必应 → Bing
+Bing-HW / bingHW → Bing-HW
+Pinterest / pin / pinterest → Pinterest
+Spotify / spotify → Spotify
+Yandex / yandex → Yandex
+Outbrain / outbrain → Outbrain
+Taboola / taboola → Taboola
+Transsnet / transsnet → Transsnet
+Moloco / moloco → Moloco
+SmartNews / smartnews → SmartNews
+Mintegral / mintegral → Mintegral
+YM / YM Service → YM Service
+Yahoo / yahoo → Yahoo
+Reddit / reddit → Reddit
+Line / line → Line
+VK / vk → VK
+Bigo / bigo → Bigo
+Quora / quora → Quora
+Unity / unity / Unity Ads → Unity Ads
+UC / uc → UC
+LinkedIn / linkedin / 领英 → LinkedIn
+Huawei Ads / HW Ads / huawei → Huawei Ads
+GoodSpy / goodspy → GoodSpy
+Naver / naver → Naver
+Bilibili / bilibili / B站 → bilibili
+Telegram / telegram → Telegram
+Twitch / twitch → Twitch
+Preciso / preciso → Preciso
+Dable / dable → Dable
+Eagllwin / eagllwin → Eagllwin
+Haiistar / haiistar → Haiistar
+Kakao / kakao → Kakao
+TTD / The Trade Desk / thetradedesk → The Trade Desk
+Adprime / adprime → adprime
+RTBhouse / rtbhouse → RTBhouse
+Creative Kicker / creativekicker → Creative Kicker
+Popin / popin → Popin
+OPPO / oppo / OPPO Ads → OPPO Ads
+VIVO / vivo / VIVO Ads → VIVO Ads
+多平台时用" & "连接，如 "Facebook & TikTok"
 
 【字段提取规则】
 1. region：目标投放地区，如"欧美"、"东南亚"、"全球"；多地区用"、"分隔
