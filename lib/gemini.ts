@@ -211,12 +211,20 @@ export async function parseRequirement(rawInput: string) {
 }
 
 // 生成评估（M2）
-export async function evaluateRequirement(structuredData: Record<string, unknown>) {
+// chatHistory 可选：把对话记录带入，让 AI 根据对话中商讨的修改重新评估
+export async function evaluateRequirement(
+  structuredData: Record<string, unknown>,
+  chatHistory?: Array<{ role: "user" | "assistant"; content: string }>
+) {
   const dataStr = JSON.stringify(structuredData, null, 2);
-  const text = await callAI(
-    EVALUATE_SYSTEM_PROMPT,
-    `请对以下广告投放需求进行专业评估：\n\n${dataStr}`
-  );
+  let userMessage = `请对以下广告投放需求进行专业评估：\n\n${dataStr}`;
+  if (chatHistory && chatHistory.length > 0) {
+    const historyStr = chatHistory
+      .map((m) => `${m.role === "user" ? "商务" : "AI"}：${m.content}`)
+      .join("\n");
+    userMessage += `\n\n【重要】以下是商务与 AI 的对话记录，对话中可能讨论了预算调整、ROI 目标修改、策略变更等内容，请结合对话内容对需求进行重新评估，反映对话中达成的共识和调整：\n\n${historyStr}`;
+  }
+  const text = await callAI(EVALUATE_SYSTEM_PROMPT, userMessage);
   return JSON.parse(text);
 }
 

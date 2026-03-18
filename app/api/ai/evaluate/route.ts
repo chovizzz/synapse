@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { evaluateRequirement } from "@/lib/gemini";
-import { StructuredRequirement } from "@/types";
+import type { StructuredRequirement, AIChatMessage } from "@/types";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { structuredData } = body as { structuredData: StructuredRequirement };
+    const { structuredData, chatHistory } = body as {
+      structuredData: StructuredRequirement;
+      chatHistory?: AIChatMessage[];
+    };
 
     if (!structuredData || typeof structuredData !== "object") {
       return NextResponse.json(
@@ -14,7 +17,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = await evaluateRequirement(structuredData as unknown as Record<string, unknown>);
+    const data = await evaluateRequirement(
+      structuredData as unknown as Record<string, unknown>,
+      chatHistory
+    );
     return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error("[/api/ai/evaluate]", err);

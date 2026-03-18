@@ -271,7 +271,10 @@ export default function RequirementDetailPage() {
     fetch("/api/ai/evaluate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ structuredData: requirement.structuredData }),
+      body: JSON.stringify({
+        structuredData: requirement.structuredData,
+        chatHistory: chatMessages.length > 0 ? chatMessages : undefined,
+      }),
     })
       .then((r) => r.json())
       .then((body) => {
@@ -284,7 +287,7 @@ export default function RequirementDetailPage() {
           updateRequirement(updated);
           setEvaluation(body.data as AIEvaluation);
           setActiveTab("evaluation");
-          setToast("评估已重新生成");
+          setToast(chatMessages.length > 0 ? "已结合对话内容重新生成评估" : "评估已重新生成");
         }
       })
       .catch(() => {})
