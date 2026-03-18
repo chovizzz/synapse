@@ -20,12 +20,25 @@ const DEMO_INPUT =
 const FIELD_LABELS: Record<keyof Omit<StructuredRequirement, "ambiguous_fields">, string> = {
   region: "投放地区",
   media_platform: "媒体平台",
-  daily_budget_usd: "日预算(美元)",
+  daily_budget_usd: "测试日预算(美元)",
   target_kpi: "核心指标",
   target_roi: "目标ROI",
   product_type: "产品类型",
   campaign_objective: "推广目标",
+  product_url: "产品链接",
+  soft_kpi: "Soft KPI",
+  test_period: "测试周期",
+  third_party_tracking: "三方归因",
+  attribution_model: "自投/代投",
+  expected_start_date: "期望启动时间",
+  policy_notes: "政策备注",
 };
+
+// 需要用 number 输入框的字段
+const NUMBER_FIELDS: Array<keyof Omit<StructuredRequirement, "ambiguous_fields">> = [
+  "daily_budget_usd",
+  "target_roi",
+];
 
 export default function NewRequirementPage() {
   const router = useRouter();
@@ -340,36 +353,40 @@ export default function NewRequirementPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {(Object.keys(FIELD_LABELS) as Array<keyof typeof FIELD_LABELS>).map((key) => (
-                  <div key={key} className="space-y-1">
-                    <label className="text-xs text-[hsl(var(--muted-foreground))]">
-                      {FIELD_LABELS[key]}
-                    </label>
-                    <input
-                      type={key === "daily_budget_usd" || key === "target_roi" ? "number" : "text"}
-                      value={
-                        editableData[key] != null ? String(editableData[key]) : ""
-                      }
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        const isNum = key === "daily_budget_usd" || key === "target_roi";
-                        setEditableData((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                [key]: isNum ? (raw === "" ? null : Number(raw)) : raw,
-                              }
-                            : prev
-                        );
-                      }}
-                      className={cn(
-                        "w-full rounded-lg border border-[hsl(var(--border))]",
-                        "bg-[hsl(var(--background))] text-[hsl(var(--foreground))]",
-                        "px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                      )}
-                    />
-                  </div>
-                ))}
+                {(Object.keys(FIELD_LABELS) as Array<keyof typeof FIELD_LABELS>).map((key) => {
+                  const isNum = NUMBER_FIELDS.includes(key);
+                  const rawVal = editableData[key];
+                  const displayVal = rawVal != null ? String(rawVal) : "";
+                  return (
+                    <div key={key} className="space-y-1">
+                      <label className="text-xs text-[hsl(var(--muted-foreground))]">
+                        {FIELD_LABELS[key]}
+                      </label>
+                      <input
+                        type={isNum ? "number" : "text"}
+                        value={displayVal}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setEditableData((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  [key]: isNum
+                                    ? v === "" ? null : Number(v)
+                                    : v,
+                                }
+                              : prev
+                          );
+                        }}
+                        className={cn(
+                          "w-full rounded-lg border border-[hsl(var(--border))]",
+                          "bg-[hsl(var(--background))] text-[hsl(var(--foreground))]",
+                          "px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                        )}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

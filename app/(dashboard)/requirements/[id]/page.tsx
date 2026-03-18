@@ -396,20 +396,89 @@ export default function RequirementDetailPage() {
                   需求参数
                 </h3>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  {[
-                    { label: "投放地区", value: sd.region },
-                    { label: "媒体平台", value: sd.media_platform },
-                    { label: "日预算", value: sd.daily_budget_usd != null ? `$${sd.daily_budget_usd}/天` : "—" },
-                    { label: "核心指标", value: sd.target_kpi },
-                    { label: "目标ROI", value: sd.target_roi != null ? sd.target_roi.toString() : "—" },
-                    { label: "产品类型", value: sd.product_type },
-                    { label: "推广目标", value: sd.campaign_objective },
-                  ].map(({ label, value }) => (
-                    <div key={label}>
-                      <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">{label}</div>
-                      <div className="text-sm font-medium text-slate-900 dark:text-white">{value || "—"}</div>
+                  {/* 基础字段 */}
+                  <div>
+                    <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">投放地区</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.region || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">媒体平台</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.media_platform || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">测试日预算</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                      {sd.daily_budget_usd != null ? `$${sd.daily_budget_usd}/天` : "—"}
                     </div>
-                  ))}
+                  </div>
+                  <div>
+                    <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">核心指标</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.target_kpi || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">目标ROI</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                      {sd.target_roi != null ? sd.target_roi.toString() : "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">产品类型</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.product_type || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">推广目标</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.campaign_objective || "—"}</div>
+                  </div>
+                  {/* 扩展字段 */}
+                  {sd.soft_kpi && (
+                    <div>
+                      <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">Soft KPI</div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.soft_kpi}</div>
+                    </div>
+                  )}
+                  {sd.test_period && (
+                    <div>
+                      <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">测试周期</div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.test_period}</div>
+                    </div>
+                  )}
+                  {sd.third_party_tracking && (
+                    <div>
+                      <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">三方归因</div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.third_party_tracking}</div>
+                    </div>
+                  )}
+                  {sd.attribution_model && (
+                    <div>
+                      <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">自投/代投</div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.attribution_model}</div>
+                    </div>
+                  )}
+                  {sd.expected_start_date && (
+                    <div>
+                      <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">期望启动时间</div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.expected_start_date}</div>
+                    </div>
+                  )}
+                  {sd.policy_notes && (
+                    <div className="col-span-2">
+                      <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">政策备注</div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-white">{sd.policy_notes}</div>
+                    </div>
+                  )}
+                  {sd.product_url && (
+                    <div className="col-span-2">
+                      <div className="text-[11px] mb-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">产品链接</div>
+                      <a
+                        href={sd.product_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-indigo-500 hover:underline break-all"
+                      >
+                        {sd.product_url}
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {sd.ambiguous_fields.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-[hsl(var(--border))]">

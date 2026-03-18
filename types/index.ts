@@ -20,6 +20,7 @@ export type ProjectStatus =
 
 // AI 解析后的结构化需求
 export interface StructuredRequirement {
+  // 基础字段
   region: string;
   media_platform: string;
   daily_budget_usd: number | null;
@@ -27,6 +28,14 @@ export interface StructuredRequirement {
   target_roi: number | null;
   product_type: string;
   campaign_objective: string;
+  // 扩展字段
+  product_url: string | null;        // 产品链接（App Store / 官网）
+  soft_kpi: string;                  // Soft KPI（次留、LTV 等）
+  test_period: string;               // 测试周期（如"2-3个月"）
+  third_party_tracking: string;      // 三方归因（Adjust/AppsFlyer 等）
+  attribution_model: string;         // 自投 / 代投 / 混合
+  expected_start_date: string;       // 期望启动时间 / 合同预计完成时间
+  policy_notes: string;              // 政策特殊要求
   ambiguous_fields: Array<{ field: string; question: string }>;
 }
 
