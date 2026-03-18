@@ -214,6 +214,11 @@ export default function RequirementDetailPage() {
   const [selectedOptimizerId, setSelectedOptimizerId] = useState("");
   const [isSubmittingToOptimizer, setIsSubmittingToOptimizer] = useState(false);
 
+  // AI 对话状态（提升到父组件，切 Tab 不丢失）
+  const [chatMessages, setChatMessages] = useState<import("@/types").AIChatMessage[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [isReEvaluating, setIsReEvaluating] = useState(false);
+
   const updateRequirement = useCallback((updated: Requirement) => {
     const all = getRequirements();
     const next = all.map((r) => (r.id === updated.id ? updated : r));
@@ -259,6 +264,31 @@ export default function RequirementDetailPage() {
       .finally(() => setIsEvaluating(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requirement?.id]);
+
+  const handleReEvaluate = () => {
+    if (!requirement?.structuredData || isReEvaluating) return;
+    setIsReEvaluating(true);
+    fetch("/api/ai/evaluate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ structuredData: requirement.structuredData }),
+    })
+      .then((r) => r.json())
+      .then((body) => {
+        if (body.success && body.data) {
+          const updated: Requirement = {
+            ...requirement,
+            aiEvaluation: body.data as AIEvaluation,
+            updatedAt: new Date().toISOString(),
+          };
+          updateRequirement(updated);
+          setEvaluation(body.data as AIEvaluation);
+          setToast("评估已重新生成");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsReEvaluating(false));
+  };
 
   const handleSubmitToOptimizer = () => {
     if (!requirement) return;
@@ -770,23 +800,25 @@ export default function RequirementDetailPage() {
 
         {/* Tab: AI Chat */}
         {activeTab === "aichat" && (
-          evaluation && sd ? (
-            <AIChat requirementData={sd} evaluationData={evaluation} />
+          sd ? (
+            <AIChat
+              requirementData={sd}
+              evaluationData={evaluation}
+              messages={chatMessages}
+              onMessagesChange={setChatMessages}
+              loading={chatLoading}
+              onLoadingChange={setChatLoading}
+              onReEvaluate={handleReEvaluate}
+              isReEvaluating={isReEvaluating}
+            />
           ) : (
             <div className="rounded-2xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--card))] p-10 shadow-sm text-center">
-              {isEvaluating ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 size={24} className="animate-spin text-indigo-500" />
-                  <p className="text-sm text-slate-400 dark:text-[hsl(var(--muted-foreground))]">AI 评估完成后即可开始对话</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3">
-                  <Bot size={28} className="text-slate-200 dark:text-slate-600" />
-                  <p className="text-sm text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
-                    请先切换到「AI 评估」标签，等待评估完成后再进行 AI 对话
-                  </p>
-                </div>
-              )}
+              <div className="flex flex-col items-center gap-3">
+                <Bot size={28} className="text-slate-200 dark:text-slate-600" />
+                <p className="text-sm text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
+                  需求数据加载中，请稍候
+                </p>
+              </div>
             </div>
           )
         )}
