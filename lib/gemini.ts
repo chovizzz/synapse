@@ -246,8 +246,6 @@ export async function chatWithContext(
     const json = await res.json();
     return json.choices?.[0]?.message?.content || "抱歉，无法生成回复";
   } else {
-    // Gemini doesn't support direct multi-turn with system prompt in the same way,
-    // so we embed history into a single prompt
     const history = messages
       .map((m) => `${m.role === "user" ? "用户" : "AI"}：${m.content}`)
       .join("\n");
@@ -259,6 +257,79 @@ export async function chatWithContext(
       config: { temperature: 0.6 },
     });
     return response.text || "抱歉，无法生成回复";
+  }
+}
+
+// 多轮对话（流式）—— 逐 chunk 回调，支持 AbortSignal
+export async function chatWithContextStream(
+  systemContext: string,
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  onChunk: (chunk: string) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  if (useDeepSeek) {
+    const res = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${DEEPSEEK_KEY}`,
+      },
+      signal,
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: systemContext },
+          ...messages,
+        ],
+        temperature: 0.6,
+        max_tokens: 1024,
+        stream: true,
+      }),
+    });
+    if (!res.ok) throw new Error(`DeepSeek API error: ${res.status}`);
+    if (!res.body) throw new Error("No response body");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const data = trimmed.slice(5).trim();
+        if (data === "[DONE]") return;
+        try {
+          const parsed = JSON.parse(data);
+          const chunk = parsed.choices?.[0]?.delta?.content;
+          if (chunk) onChunk(chunk);
+        } catch {
+          // skip malformed lines
+        }
+      }
+    }
+  } else {
+    // Gemini stream
+    const history = messages
+      .map((m) => `${m.role === "user" ? "用户" : "AI"}：${m.content}`)
+      .join("\n");
+    const fullPrompt = `${systemContext}\n\n以下是对话历史：\n${history}`;
+    const ai = getGemini();
+    const stream = await ai.models.generateContentStream({
+      model: "gemini-2.0-flash",
+      contents: fullPrompt,
+      config: { temperature: 0.6 },
+    });
+    for await (const chunk of stream) {
+      if (signal?.aborted) throw new Error("AbortError");
+      const text = chunk.text;
+      if (text) onChunk(text);
+    }
   }
 }
 

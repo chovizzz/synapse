@@ -36,12 +36,15 @@ export default function AIChat({
   onReEvaluate,
   isReEvaluating,
 }: Props) {
+  const [inputValue, setInputValue] = useState("");
+  // 流式输出中的内容（追加中）
+  const [streamingContent, setStreamingContent] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, streamingContent]);
 
   const sendMessage = async (content: string) => {
     if (!content.trim() || loading) return;
@@ -49,9 +52,11 @@ export default function AIChat({
     const userMsg: AIChatMessage = { role: "user", content: content.trim() };
     const nextMessages = [...messages, userMsg];
     onMessagesChange(nextMessages);
+    setInputValue("");
     onLoadingChange(true);
+    setStreamingContent("");
 
-    // 检查关键词，自动触发重新评估
+    // 检查关键词，决定完成后是否触发重新评估
     const shouldReEval = REEVAL_KEYWORDS.some((kw) => content.includes(kw));
 
     abortRef.current = new AbortController();
@@ -65,36 +70,67 @@ export default function AIChat({
           messages: nextMessages,
           requirementData,
           evaluationData,
-          requestReEval: shouldReEval,
         }),
       });
-      const json = await res.json();
-      if (json.success) {
-        onMessagesChange([
-          ...nextMessages,
-          { role: "assistant", content: json.reply },
-        ]);
-        // 如果关键词触发了重新评估，自动执行
-        if (shouldReEval) {
-          onReEvaluate();
+
+      if (!res.ok || !res.body) {
+        onMessagesChange([...nextMessages, { role: "assistant", content: "抱歉，AI 暂时无法回复，请重试。" }]);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const data = trimmed.slice(5).trim();
+          if (data === "[DONE]") {
+            // 流结束，写入 messages
+            onMessagesChange([...nextMessages, { role: "assistant", content: fullContent || "（无内容）" }]);
+            setStreamingContent("");
+            if (shouldReEval) onReEvaluate();
+            return;
+          }
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) {
+              onMessagesChange([...nextMessages, { role: "assistant", content: parsed.error }]);
+              setStreamingContent("");
+              return;
+            }
+            if (parsed.chunk) {
+              fullContent += parsed.chunk;
+              setStreamingContent(fullContent);
+            }
+          } catch {
+            // skip malformed lines
+          }
         }
-      } else {
-        onMessagesChange([
-          ...nextMessages,
-          { role: "assistant", content: "抱歉，AI 暂时无法回复，请重试。" },
-        ]);
+      }
+
+      // 若没收到 [DONE] 但 reader 结束了（正常情况 fallback）
+      if (fullContent) {
+        onMessagesChange([...nextMessages, { role: "assistant", content: fullContent }]);
+        setStreamingContent("");
+        if (shouldReEval) onReEvaluate();
       }
     } catch (err) {
-      if ((err as Error).name === "AbortError") {
-        onMessagesChange([
-          ...nextMessages,
-          { role: "assistant", content: "已取消" },
-        ]);
+      const isAbort = (err as Error)?.name === "AbortError";
+      setStreamingContent("");
+      if (isAbort) {
+        onMessagesChange([...nextMessages, { role: "assistant", content: "已取消" }]);
       } else {
-        onMessagesChange([
-          ...nextMessages,
-          { role: "assistant", content: "网络错误，请检查连接后重试。" },
-        ]);
+        onMessagesChange([...nextMessages, { role: "assistant", content: "网络错误，请检查连接后重试。" }]);
       }
     } finally {
       onLoadingChange(false);
@@ -106,7 +142,10 @@ export default function AIChat({
     abortRef.current?.abort();
   };
 
-  const [inputValue, setInputValue] = useState("");
+  // 渲染消息列表（最后一条 assistant 消息若正在流式则用 streamingContent）
+  const displayMessages: AIChatMessage[] = loading && streamingContent
+    ? [...messages, { role: "assistant" as const, content: streamingContent }]
+    : messages;
 
   return (
     <div
@@ -149,7 +188,7 @@ export default function AIChat({
       </div>
 
       {/* Suggested questions — show when no messages */}
-      {messages.length === 0 && (
+      {messages.length === 0 && !loading && (
         <div className="px-4 pt-4 pb-2">
           <p className="text-xs mb-2.5" style={{ color: "hsl(var(--muted-foreground))" }}>
             快速发问：
@@ -158,7 +197,7 @@ export default function AIChat({
             {SUGGESTED_QUESTIONS.map((q) => (
               <button
                 key={q}
-                onClick={() => { setInputValue(""); sendMessage(q); }}
+                onClick={() => sendMessage(q)}
                 disabled={loading}
                 className="text-xs px-3 py-1.5 rounded-full transition-all hover:opacity-80 disabled:opacity-40"
                 style={{
@@ -175,44 +214,53 @@ export default function AIChat({
       )}
 
       {/* Messages */}
-      {messages.length > 0 && (
+      {(displayMessages.length > 0) && (
         <div
           className="max-h-[440px] overflow-y-auto px-4 py-3 space-y-4"
           style={{ backgroundColor: "hsl(var(--background))" }}
         >
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
-              {msg.role === "assistant" && (
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ backgroundColor: "hsl(var(--primary) / 0.2)" }}
-                >
-                  <Bot size={12} style={{ color: "hsl(var(--primary))" }} />
-                </div>
-              )}
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                  msg.role === "user" ? "rounded-tr-sm" : "rounded-tl-sm"
-                }`}
-                style={{
-                  backgroundColor: msg.role === "user" ? "hsl(var(--primary))" : "hsl(var(--card))",
-                  color: msg.role === "user" ? "white" : "hsl(var(--foreground))",
-                  border: msg.role === "assistant" ? "1px solid hsl(var(--border))" : "none",
-                }}
-              >
-                {msg.role === "assistant" ? (
-                  <div className="prose prose-sm max-w-none text-sm text-[hsl(var(--foreground))]">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+          {displayMessages.map((msg, idx) => {
+            const isStreamingMsg = loading && idx === displayMessages.length - 1 && msg.role === "assistant" && !!streamingContent;
+            return (
+              <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
+                {msg.role === "assistant" && (
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ backgroundColor: "hsl(var(--primary) / 0.2)" }}
+                  >
+                    <Bot size={12} style={{ color: "hsl(var(--primary))" }} />
                   </div>
-                ) : (
-                  msg.content
                 )}
+                <div
+                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                    msg.role === "user" ? "rounded-tr-sm" : "rounded-tl-sm"
+                  }`}
+                  style={{
+                    backgroundColor: msg.role === "user" ? "hsl(var(--primary))" : "hsl(var(--card))",
+                    color: msg.role === "user" ? "white" : "hsl(var(--foreground))",
+                    border: msg.role === "assistant" ? "1px solid hsl(var(--border))" : "none",
+                  }}
+                >
+                  {msg.role === "assistant" ? (
+                    <div className="prose prose-sm max-w-none text-sm text-[hsl(var(--foreground))]">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      {isStreamingMsg && (
+                        <span
+                          className="inline-block w-0.5 h-4 ml-0.5 align-middle animate-pulse"
+                          style={{ backgroundColor: "hsl(var(--primary))" }}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    msg.content
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
-          {/* Loading indicator */}
-          {loading && (
+          {/* Loading spinner — only shown when stream hasn't started yet */}
+          {loading && !streamingContent && (
             <div className="flex justify-start gap-2 items-center">
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
@@ -245,6 +293,25 @@ export default function AIChat({
               </div>
             </div>
           )}
+
+          {/* Cancel button while streaming */}
+          {loading && streamingContent && (
+            <div className="flex justify-end">
+              <button
+                onClick={handleCancel}
+                className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: "hsl(var(--destructive) / 0.08)",
+                  color: "hsl(var(--destructive))",
+                  border: "1px solid hsl(var(--destructive) / 0.2)",
+                }}
+              >
+                <X size={10} />
+                停止生成
+              </button>
+            </div>
+          )}
+
           <div ref={endRef} />
         </div>
       )}
@@ -265,7 +332,6 @@ export default function AIChat({
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage(inputValue);
-                setInputValue("");
               }
             }}
             placeholder="问 AI 任何策略问题，或说「重新评估」触发重新打分…"
@@ -274,7 +340,7 @@ export default function AIChat({
             className="flex-1 resize-none bg-transparent outline-none text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] leading-relaxed disabled:opacity-50"
           />
           <button
-            onClick={() => { sendMessage(inputValue); setInputValue(""); }}
+            onClick={() => sendMessage(inputValue)}
             disabled={!inputValue.trim() || loading}
             className="flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30"
             style={{ backgroundColor: "hsl(var(--primary))" }}
@@ -293,4 +359,3 @@ export default function AIChat({
     </div>
   );
 }
-

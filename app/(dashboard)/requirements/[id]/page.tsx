@@ -283,6 +283,7 @@ export default function RequirementDetailPage() {
           };
           updateRequirement(updated);
           setEvaluation(body.data as AIEvaluation);
+          setActiveTab("evaluation");
           setToast("评估已重新生成");
         }
       })
@@ -640,14 +641,18 @@ export default function RequirementDetailPage() {
             <div className="rounded-2xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--card))] p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-[hsl(var(--muted-foreground))]">AI 评估</h3>
-                {isEvaluating && (
+                {(isEvaluating || isReEvaluating) && (
                   <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
                     <Loader2 size={12} className="animate-spin" />
-                    评估中…
+                    {isReEvaluating ? "重新评估中…" : "评估中…"}
                   </div>
                 )}
               </div>
-              <EvaluationCard evaluation={evaluation} isLoading={isEvaluating && !evaluation} />
+              <EvaluationCard
+                key={evaluation ? `${evaluation.success_rate}-${evaluation.confidence}` : "empty"}
+                evaluation={evaluation}
+                isLoading={(isEvaluating || isReEvaluating) && !evaluation}
+              />
             </div>
 
             {/* 商务预审：提交给优化师 */}
