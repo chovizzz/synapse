@@ -14,14 +14,15 @@ const FIELD_META: Array<{
   icon: string;
   label: string;
   format?: (v: unknown) => string;
+  hideIfEmpty?: boolean;
 }> = [
   { key: "region", icon: "🌍", label: "投放地区" },
   { key: "media_platform", icon: "📱", label: "媒体平台" },
   {
     key: "daily_budget_usd",
     icon: "💰",
-    label: "日预算(美元)",
-    format: (v) => (v != null ? `$${v}` : "未提供"),
+    label: "测试日预算",
+    format: (v) => (v != null ? `$${v}/天` : "未提供"),
   },
   { key: "target_kpi", icon: "📊", label: "核心指标" },
   {
@@ -32,6 +33,19 @@ const FIELD_META: Array<{
   },
   { key: "product_type", icon: "📦", label: "产品类型" },
   { key: "campaign_objective", icon: "🚀", label: "推广目标" },
+  { key: "soft_kpi", icon: "📈", label: "Soft KPI", hideIfEmpty: true },
+  { key: "test_period", icon: "🗓️", label: "测试周期", hideIfEmpty: true },
+  { key: "third_party_tracking", icon: "🔗", label: "三方归因", hideIfEmpty: true },
+  { key: "attribution_model", icon: "🏢", label: "自投/代投", hideIfEmpty: true },
+  { key: "expected_start_date", icon: "⏰", label: "期望启动", hideIfEmpty: true },
+  { key: "policy_notes", icon: "📋", label: "政策备注", hideIfEmpty: true },
+  {
+    key: "product_url",
+    icon: "🔗",
+    label: "产品链接",
+    hideIfEmpty: true,
+    format: (v) => (v ? String(v).replace(/^https?:\/\//, "").slice(0, 40) + "…" : "—"),
+  },
 ];
 
 const container = {
@@ -82,9 +96,13 @@ export function ParseAnimation({ data, isLoading }: ParseAnimationProps) {
         initial="hidden"
         animate="show"
       >
-        {FIELD_META.map(({ key, icon, label, format }) => {
+        {FIELD_META.filter(({ key, hideIfEmpty }) => {
+          if (!hideIfEmpty) return true;
+          const v = data[key];
+          return v != null && v !== "" && v !== "—";
+        }).map(({ key, icon, label, format }) => {
           const raw = data[key];
-          const value = format ? format(raw) : (raw != null ? String(raw) : "—");
+          const value = format ? format(raw) : (raw != null && raw !== "" ? String(raw) : "—");
 
           return (
             <motion.div

@@ -34,7 +34,7 @@ async function callAI(systemPrompt: string, userMessage: string): Promise<string
         ],
         response_format: { type: "json_object" },
         temperature: 0.1,
-        max_tokens: 1024,
+        max_tokens: 2048,
       }),
     });
     if (!res.ok) throw new Error(`DeepSeek API error: ${res.status}`);
@@ -189,7 +189,25 @@ export async function parseRequirement(rawInput: string) {
     PARSE_SYSTEM_PROMPT,
     `请从以下客户原话中提取广告投放需求信息：\n\n"${rawInput}"`
   );
-  return JSON.parse(text);
+  const parsed = JSON.parse(text);
+  // 兜底：确保所有字段存在，防止 AI 截断导致字段缺失
+  return {
+    region: parsed.region ?? "",
+    media_platform: parsed.media_platform ?? "",
+    daily_budget_usd: parsed.daily_budget_usd ?? null,
+    target_kpi: parsed.target_kpi ?? "",
+    target_roi: parsed.target_roi ?? null,
+    product_type: parsed.product_type ?? "",
+    campaign_objective: parsed.campaign_objective ?? "",
+    product_url: parsed.product_url ?? null,
+    soft_kpi: parsed.soft_kpi ?? "",
+    test_period: parsed.test_period ?? "",
+    third_party_tracking: parsed.third_party_tracking ?? "",
+    attribution_model: parsed.attribution_model ?? "",
+    expected_start_date: parsed.expected_start_date ?? "",
+    policy_notes: parsed.policy_notes ?? "",
+    ambiguous_fields: parsed.ambiguous_fields ?? [],
+  };
 }
 
 // 生成评估（M2）
