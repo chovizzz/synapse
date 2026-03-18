@@ -38,19 +38,18 @@ export default function RequirementsPage() {
   const filtered = MOCK_REQUIREMENTS.filter((r) => matchesTab(r.status, activeTab));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-white">需求管理</h2>
-          <p className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">需求管理</h2>
+          <p className="text-xs mt-0.5 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
             共 {MOCK_REQUIREMENTS.length} 条需求
           </p>
         </div>
         <button
           onClick={() => router.push("/requirements/new")}
-          className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 flex-shrink-0"
-          style={{ backgroundColor: "hsl(var(--primary))" }}
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all bg-indigo-600 hover:bg-indigo-700 dark:bg-[hsl(var(--primary))] dark:hover:opacity-90 flex-shrink-0 shadow-sm"
         >
           <Plus size={16} />
           <span className="hidden sm:inline">新建需求</span>

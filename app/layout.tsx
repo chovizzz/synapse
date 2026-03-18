@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { RoleProvider } from "@/lib/role-context";
+import { ThemeProvider } from "@/lib/theme-provider";
 
 export const metadata: Metadata = {
   title: "Synapse — 广告代投协作平台",
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-CN" suppressHydrationWarning>
       <body>
         <SessionProvider>
-          <RoleProvider>{children}</RoleProvider>
+          <ThemeProvider>
+            <RoleProvider>{children}</RoleProvider>
+          </ThemeProvider>
         </SessionProvider>
       </body>
     </html>

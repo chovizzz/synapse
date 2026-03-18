@@ -5,6 +5,8 @@ import { Bell, Menu, LogOut } from "lucide-react";
 import { useRole } from "@/lib/role-context";
 import { useState } from "react";
 import NotificationPanel from "@/components/layout/NotificationPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { cn } from "@/lib/utils";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "首页看板",
@@ -27,76 +29,67 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
   )?.[1] ?? "首页看板";
 
   return (
-    <header
-      className="h-14 sm:h-16 flex items-center px-3 sm:px-6 border-b flex-shrink-0 gap-2 relative"
-      style={{
-        backgroundColor: "hsl(var(--card))",
-        borderColor: "hsl(var(--border))",
-      }}
-    >
+    <header className="h-14 sm:h-16 flex items-center px-3 sm:px-6 border-b flex-shrink-0 gap-2 relative bg-white dark:bg-[hsl(var(--card))] border-slate-200 dark:border-[hsl(var(--border))] shadow-sm dark:shadow-none">
       {/* Hamburger menu — mobile only */}
       <button
         onClick={onMenuToggle}
-        className="lg:hidden p-2 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
+        className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors flex-shrink-0"
         aria-label="打开菜单"
       >
-        <Menu size={20} style={{ color: "hsl(var(--muted-foreground))" }} />
+        <Menu size={20} className="text-slate-400 dark:text-[hsl(var(--muted-foreground))]" />
       </button>
 
       {/* Page title */}
-      <h1 className="text-base sm:text-lg font-semibold text-white flex-1 truncate">{title}</h1>
+      <h1 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex-1 truncate">{title}</h1>
 
       {/* Right section */}
-      <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         {/* Role badge */}
         <span
-          className="hidden sm:inline-flex text-xs px-2.5 py-1 rounded-full font-medium"
-          style={
+          className={cn(
+            "hidden sm:inline-flex text-xs px-2.5 py-1 rounded-full font-medium",
             currentUser.role === "BUSINESS"
-              ? { backgroundColor: "rgba(59,130,246,0.12)", color: "rgb(96,165,250)" }
-              : { backgroundColor: "rgba(34,197,94,0.12)", color: "rgb(74,222,128)" }
-          }
+              ? "bg-blue-100 text-blue-700 dark:bg-blue-500/12 dark:text-blue-400"
+              : "bg-green-100 text-green-700 dark:bg-green-500/12 dark:text-green-400"
+          )}
         >
           {currentUser.role === "BUSINESS" ? "商务" : "优化师"}
         </span>
 
         {/* Divider */}
-        <div className="hidden sm:block w-px h-6" style={{ backgroundColor: "hsl(var(--border))" }} />
+        <div className="hidden sm:block w-px h-5 bg-slate-200 dark:bg-[hsl(var(--border))]" />
+
+        {/* Theme toggle */}
+        <ThemeToggle />
 
         {/* Notification bell */}
         <div className="relative">
           <button
             onClick={() => setNotifOpen((v) => !v)}
-            className="relative p-2 rounded-lg transition-colors hover:bg-white/5"
+            className="relative p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5"
           >
-            <Bell size={18} style={{ color: "hsl(var(--muted-foreground))" }} />
+            <Bell size={18} className="text-slate-400 dark:text-[hsl(var(--muted-foreground))]" />
           </button>
           <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
         </div>
 
-        {/* User avatar + name */}
+        {/* User avatar */}
         <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0"
-            style={{
-              backgroundColor: "hsl(var(--primary) / 0.2)",
-              color: "hsl(var(--primary))",
-            }}
-          >
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 bg-indigo-600 text-white shadow-md shadow-indigo-100 dark:shadow-none dark:bg-[hsl(var(--primary)/0.2)] dark:text-[hsl(var(--primary))]">
             {currentUser.name.charAt(0)}
           </div>
           <div className="hidden sm:block">
-            <div className="text-sm font-medium text-white leading-none">{currentUser.name}</div>
+            <div className="text-sm font-medium text-slate-900 dark:text-white leading-none">{currentUser.name}</div>
           </div>
         </div>
 
         {/* Logout */}
         <button
           onClick={logout}
-          className="p-2 rounded-lg transition-colors hover:bg-white/5"
+          className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5"
           title="退出登录"
         >
-          <LogOut size={16} style={{ color: "hsl(var(--muted-foreground))" }} />
+          <LogOut size={16} className="text-slate-400 dark:text-[hsl(var(--muted-foreground))]" />
         </button>
       </div>
     </header>
