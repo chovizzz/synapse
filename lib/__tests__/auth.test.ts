@@ -27,7 +27,7 @@ describe("authorizeByEmail (mock users)", () => {
     const user = authorizeByEmail("wang@synapse.demo");
     expect(user).not.toBeNull();
     expect(user?.role).toBe("BUSINESS");
-    expect(user?.name).toBe("商务小王");
+    expect(user?.name).toBe("商务小谢");
   });
 
   it("returns user object for valid email (OPTIMIZER)", () => {

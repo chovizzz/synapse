@@ -13,7 +13,7 @@ const RoleContext = createContext<RoleContextType | null>(null);
 
 const FALLBACK_USER: User = {
   id: "u1",
-  name: "商务小王",
+  name: "商务小谢",
   email: "wang@synapse.demo",
   role: "BUSINESS",
 };

@@ -49,8 +49,8 @@ function LoginForm() {
   }
 
   const DEMO_ACCOUNTS = [
-    { label: "商务小王", email: "wang@synapse.demo", role: "商务", color: "blue" as const },
-    { label: "优化师小李", email: "li@synapse.demo", role: "优化师", color: "green" as const },
+    { label: "商务小谢", email: "wang@synapse.demo", role: "商务", color: "blue" as const },
+    { label: "优化师小郑", email: "li@synapse.demo", role: "优化师", color: "green" as const },
   ];
 
   return (
