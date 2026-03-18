@@ -194,7 +194,15 @@ export default function NewRequirementPage() {
               <label className="text-sm font-medium text-[hsl(var(--foreground))]">
                 选择客户
               </label>
-              <Select value={selectedClientId} onValueChange={(v) => setSelectedClientId(v ?? "")}>
+              <Select
+                value={selectedClientId}
+                onValueChange={(v) => setSelectedClientId(v ?? "")}
+                itemToStringLabel={(v) => {
+                  if (!v) return "选择客户";
+                  if (v === "__custom__") return "+ 新客户（手动输入）";
+                  return clients.find((c) => c.id === v)?.name ?? String(v);
+                }}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="选择客户" />
                 </SelectTrigger>

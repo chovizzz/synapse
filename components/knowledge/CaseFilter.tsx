@@ -59,7 +59,11 @@ export function CaseFilter({
       </div>
 
       {/* Industry */}
-      <Select value={selectedIndustry || "__all__"} onValueChange={(v) => onIndustryChange((v ?? "__all__") === "__all__" ? "" : (v ?? ""))}>
+      <Select
+        value={selectedIndustry || "__all__"}
+        onValueChange={(v) => onIndustryChange((v ?? "__all__") === "__all__" ? "" : (v ?? ""))}
+        itemToStringLabel={(v) => (!v || v === "__all__" ? "全部行业" : String(v))}
+      >
         <SelectTrigger className="w-[130px]">
           <SelectValue placeholder="全部行业" />
         </SelectTrigger>
@@ -74,7 +78,11 @@ export function CaseFilter({
       </Select>
 
       {/* Media */}
-      <Select value={selectedMedia || "__all__"} onValueChange={(v) => onMediaChange((v ?? "__all__") === "__all__" ? "" : (v ?? ""))}>
+      <Select
+        value={selectedMedia || "__all__"}
+        onValueChange={(v) => onMediaChange((v ?? "__all__") === "__all__" ? "" : (v ?? ""))}
+        itemToStringLabel={(v) => (!v || v === "__all__" ? "全部平台" : String(v))}
+      >
         <SelectTrigger className="w-[130px]">
           <SelectValue placeholder="全部平台" />
         </SelectTrigger>
@@ -89,7 +97,11 @@ export function CaseFilter({
       </Select>
 
       {/* Region */}
-      <Select value={selectedRegion || "__all__"} onValueChange={(v) => onRegionChange((v ?? "__all__") === "__all__" ? "" : (v ?? ""))}>
+      <Select
+        value={selectedRegion || "__all__"}
+        onValueChange={(v) => onRegionChange((v ?? "__all__") === "__all__" ? "" : (v ?? ""))}
+        itemToStringLabel={(v) => (!v || v === "__all__" ? "全部地区" : String(v))}
+      >
         <SelectTrigger className="w-[130px]">
           <SelectValue placeholder="全部地区" />
         </SelectTrigger>
