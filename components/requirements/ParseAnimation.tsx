@@ -119,7 +119,7 @@ export function ParseAnimation({ data, isLoading }: ParseAnimationProps) {
               <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1 pl-2">
                 {icon} {label}
               </p>
-              <p className="text-lg font-semibold text-white pl-2">
+              <p className="text-lg font-semibold text-[hsl(var(--foreground))] pl-2">
                 <TypewriterText text={value} delay={40} />
               </p>
             </motion.div>

@@ -277,7 +277,7 @@ export default function NewRequirementPage() {
             {/* 原话预览 */}
             <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 p-4">
               <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">客户原话</p>
-              <p className="text-sm text-[hsl(var(--foreground))] leading-relaxed">{rawInput}</p>
+              <p className="text-sm text-[hsl(var(--foreground))] leading-relaxed break-all">{rawInput}</p>
             </div>
 
             {/* 解析动画区 */}
