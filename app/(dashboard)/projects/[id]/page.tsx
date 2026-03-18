@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { Project, Message, Task } from "@/types";
 import { MOCK_PROJECTS } from "@/lib/mock-data";
+import { generateAccountData } from "@/lib/account-data";
 import { getMessages, addMessage, getTasks } from "@/lib/store";
 import { useRole } from "@/lib/role-context";
 import { generateId, formatCurrency, formatDate } from "@/lib/utils";
@@ -132,18 +133,6 @@ function TaskItem({ task, onToggle }: { task: Task; onToggle: (id: string) => vo
   );
 }
 
-function generateAccountData(projectId: string) {
-  const seed = projectId.charCodeAt(projectId.length - 1);
-  const platforms = ["巨量引擎", "腾讯广告", "百度推广", "快手商业化"];
-  return platforms.map((p, i) => ({
-    platform: p,
-    account: `${p.slice(0, 2)}账号-${(seed + i) % 100 + 100}`,
-    spend: Math.round(20000 + (seed * (i + 1) * 7) % 50000),
-    roi: parseFloat((1.0 + ((seed + i) % 20) / 10).toFixed(2)),
-    ctr: parseFloat((2.0 + ((seed + i) % 15) / 10).toFixed(1)),
-    conversions: Math.round(200 + (seed * i * 3) % 800),
-  }));
-}
 
 function DataAnalysisTab({ project }: { project: Project }) {
   const accounts = generateAccountData(project.id);
