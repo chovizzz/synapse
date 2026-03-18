@@ -13,6 +13,13 @@ import { generateId } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { MOCK_CLIENTS, MOCK_USERS } from "@/lib/mock-data";
 import { StructuredRequirement, Requirement } from "@/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const DEMO_INPUT =
   "我们想在北美推一款策略手游，ROI要到1.2，预算每天500美金，跑Facebook和Instagram";
@@ -179,22 +186,19 @@ export default function NewRequirementPage() {
               <label className="text-sm font-medium text-[hsl(var(--foreground))]">
                 选择客户
               </label>
-              <select
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
-                className={cn(
-                  "w-full rounded-lg border border-[hsl(var(--border))]",
-                  "bg-[hsl(var(--card))] text-[hsl(var(--foreground))]",
-                  "px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                )}
-              >
-                {MOCK_CLIENTS.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-                <option value="__custom__">+ 新客户（手动输入）</option>
-              </select>
+              <Select value={selectedClientId} onValueChange={(v) => setSelectedClientId(v ?? "")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="选择客户" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MOCK_CLIENTS.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom__">+ 新客户（手动输入）</SelectItem>
+                </SelectContent>
+              </Select>
               {selectedClientId === "__custom__" && (
                 <input
                   type="text"
@@ -393,22 +397,19 @@ export default function NewRequirementPage() {
             {/* 分配优化师 */}
             <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 space-y-3">
               <p className="text-sm font-medium text-[hsl(var(--foreground))]">分配优化师</p>
-              <select
-                value={assignedOptimizerId}
-                onChange={(e) => setAssignedOptimizerId(e.target.value)}
-                className={cn(
-                  "w-full rounded-lg border border-[hsl(var(--border))]",
-                  "bg-[hsl(var(--background))] text-[hsl(var(--foreground))]",
-                  "px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                )}
-              >
-                <option value="">暂不分配</option>
-                {optimizers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={assignedOptimizerId} onValueChange={(v) => setAssignedOptimizerId(v ?? "")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="暂不分配" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">暂不分配</SelectItem>
+                  {optimizers.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* 提交按钮 */}
