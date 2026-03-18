@@ -88,7 +88,7 @@ export default function ProjectsPage() {
 
               {/* Meta info */}
               <div
-                className="mt-4 pt-4 border-t grid grid-cols-4 gap-4 text-sm"
+                className="mt-4 pt-4 border-t grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm"
                 style={{ borderColor: "hsl(var(--border))" }}
               >
                 <div>

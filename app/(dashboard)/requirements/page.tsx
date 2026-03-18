@@ -40,7 +40,7 @@ export default function RequirementsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-white">需求管理</h2>
           <p className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>
@@ -49,11 +49,12 @@ export default function RequirementsPage() {
         </div>
         <button
           onClick={() => router.push("/requirements/new")}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 flex-shrink-0"
           style={{ backgroundColor: "hsl(var(--primary))" }}
         >
           <Plus size={16} />
-          新建需求
+          <span className="hidden sm:inline">新建需求</span>
+          <span className="sm:hidden">新建</span>
         </button>
       </div>
 
@@ -97,11 +98,12 @@ export default function RequirementsPage() {
         })}
       </div>
 
-      {/* Table */}
+      {/* Table — horizontal scroll on mobile */}
       <div
         className="rounded-xl border overflow-hidden"
         style={{ borderColor: "hsl(var(--border))", backgroundColor: "hsl(var(--card))" }}
       >
+      <div className="overflow-x-auto">
         {filtered.length === 0 ? (
           <div className="p-12 text-center" style={{ color: "hsl(var(--muted-foreground))" }}>
             该分类暂无需求
@@ -188,6 +190,7 @@ export default function RequirementsPage() {
             </tbody>
           </table>
         )}
+      </div>
       </div>
     </div>
   );

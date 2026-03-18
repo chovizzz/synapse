@@ -165,10 +165,10 @@ export default function RequirementDetailPage() {
           <span className="text-white">{requirement.clientName}</span>
         </div>
 
-        {/* Two-column layout */}
-        <div className="flex gap-5 items-start">
+        {/* Two-column layout — stacks on mobile, side-by-side on lg+ */}
+        <div className="flex flex-col lg:flex-row gap-5 items-start">
           {/* ─── Left col 55% ─── */}
-          <div className="flex-[55] min-w-0 space-y-4">
+          <div className="w-full lg:flex-[55] min-w-0 space-y-4">
             {/* Client info */}
             <div
               className="rounded-xl border p-5 space-y-3"
@@ -369,7 +369,7 @@ export default function RequirementDetailPage() {
           </div>
 
           {/* ─── Right col 45% ─── */}
-          <div className="flex-[45] min-w-0 space-y-4">
+          <div className="w-full lg:flex-[45] min-w-0 space-y-4">
             {/* AI Evaluation card */}
             <div
               className="rounded-xl border p-5"

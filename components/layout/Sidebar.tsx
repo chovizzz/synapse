@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, Kanban, BookOpen } from "lucide-react";
+import { LayoutDashboard, FileText, Kanban, BookOpen, X } from "lucide-react";
 import { useRole } from "@/lib/role-context";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,11 @@ const NAV_ITEMS = [
   { label: "经验库", icon: BookOpen, href: "/knowledge" },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void;
+}
+
+export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const { currentUser } = useRole();
 
@@ -25,20 +29,30 @@ export function Sidebar() {
         borderColor: "hsl(var(--border))",
       }}
     >
-      {/* Logo */}
+      {/* Logo + close button */}
       <div className="p-6 flex items-center gap-3">
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center"
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: "hsl(var(--primary))" }}
         >
           <div className="w-3 h-3 rounded-full bg-white" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="font-bold text-white text-lg leading-none">Synapse</div>
           <div className="text-[10px] mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>
             广告协作平台
           </div>
         </div>
+        {/* Close button — only shown on mobile */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1 rounded-md hover:bg-white/10 transition-colors flex-shrink-0"
+            aria-label="关闭菜单"
+          >
+            <X size={18} style={{ color: "hsl(var(--muted-foreground))" }} />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -49,6 +63,7 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                 isActive

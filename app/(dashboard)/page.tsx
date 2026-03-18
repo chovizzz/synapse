@@ -37,7 +37,7 @@ function BusinessDashboard() {
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatsCard label="本月新需求" value="12 条" trend={{ direction: "up", value: "+3 vs 上月" }} />
         <StatsCard label="进行中项目" value="5 个" />
         <StatsCard label="评估完成率" value="87%" trend={{ direction: "up", value: "+5%" }} />
@@ -45,9 +45,9 @@ function BusinessDashboard() {
       </div>
 
       {/* Two-column content */}
-      <div className="grid grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left: Pending requirements (60%) */}
-        <div className="col-span-3 space-y-3">
+        <div className="col-span-1 lg:col-span-3 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">待处理需求</h2>
             <span
@@ -98,7 +98,7 @@ function BusinessDashboard() {
         </div>
 
         {/* Right: Active projects (40%) */}
-        <div className="col-span-2 space-y-3">
+        <div className="col-span-1 lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">进行中项目</h2>
             <span
@@ -200,7 +200,7 @@ function OptimizerDashboard({ optimizerName }: { optimizerName: string }) {
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatsCard
           label="待评估需求"
           value={`${evaluatingReqs.length} 条`}
@@ -216,9 +216,9 @@ function OptimizerDashboard({ optimizerName }: { optimizerName: string }) {
       </div>
 
       {/* Two-column content */}
-      <div className="grid grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left: Evaluating queue (60%) */}
-        <div className="col-span-3 space-y-3">
+        <div className="col-span-1 lg:col-span-3 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">待评估需求队列</h2>
             {evaluatingReqs.length > 0 && (
@@ -258,7 +258,7 @@ function OptimizerDashboard({ optimizerName }: { optimizerName: string }) {
         </div>
 
         {/* Right: My projects (40%) */}
-        <div className="col-span-2 space-y-3">
+        <div className="col-span-1 lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">我的项目</h2>
             <span

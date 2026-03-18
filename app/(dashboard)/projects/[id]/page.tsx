@@ -275,12 +275,13 @@ export default function ProjectBoardPage() {
       </div>
 
       {/* Main: left messages + right sidebar */}
-      <div className="flex gap-4 items-start" style={{ height: "calc(100vh - 260px)" }}>
+      <div className="flex flex-col lg:flex-row gap-4 items-start" style={{ minHeight: "400px", height: "calc(100vh - 280px)" }}>
         {/* ─── Message stream ─── */}
         <div
-          className="flex-[60] min-w-0 flex flex-col rounded-xl border overflow-hidden"
+          className="w-full lg:flex-[60] min-w-0 flex flex-col rounded-xl border overflow-hidden"
           style={{
             height: "100%",
+            minHeight: "300px",
             borderColor: "hsl(var(--border))",
             backgroundColor: "hsl(var(--card))",
           }}
@@ -331,7 +332,7 @@ export default function ProjectBoardPage() {
         </div>
 
         {/* ─── Right sidebar ─── */}
-        <div className="flex-[40] min-w-0 space-y-3" style={{ minWidth: 0 }}>
+        <div className="w-full lg:flex-[40] min-w-0 space-y-3">
           {/* Task list */}
           <div
             className="rounded-xl border p-4"
