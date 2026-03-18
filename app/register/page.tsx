@@ -27,24 +27,31 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
 
-    const key = "synapse_registered_users";
-    const existing = JSON.parse(localStorage.getItem(key) || "[]");
-    const duplicate = existing.find((u: { email: string }) => u.email === email.trim());
-    if (duplicate) {
-      setError("该邮箱已注册");
-      setLoading(false);
-      return;
-    }
-
-    const newUser = {
-      id: `u-${Date.now()}`,
-      name: name.trim(),
-      email: email.trim(),
-      role,
-    };
-    localStorage.setItem(key, JSON.stringify([...existing, newUser]));
-
     try {
+      // 先注册到服务端（data/users.json）
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), role }),
+      });
+      const json = await res.json();
+
+      if (!json.success) {
+        setError(json.error || "注册失败，请重试");
+        setLoading(false);
+        return;
+      }
+
+      // 同步到浏览器端 localStorage（供下拉选择使用）
+      try {
+        const stored = JSON.parse(localStorage.getItem("synapse_users") || "[]");
+        const alreadyIn = stored.find((u: { email: string }) => u.email === email.trim());
+        if (!alreadyIn) {
+          localStorage.setItem("synapse_users", JSON.stringify([...stored, json.data]));
+        }
+      } catch { /* 忽略 */ }
+
+      // 注册成功后自动登录
       const result = await signIn("credentials", {
         email: email.trim(),
         password,
@@ -61,7 +68,7 @@ export default function RegisterPage() {
       }
     } catch {
       setLoading(false);
-      router.push("/login");
+      setError("注册请求失败，请稍后重试");
     }
   }
 

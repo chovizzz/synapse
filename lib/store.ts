@@ -1,5 +1,5 @@
-import { Requirement, Message, Task, KnowledgeCase, FollowUp, AppNotification } from "@/types";
-import { MOCK_REQUIREMENTS, MOCK_MESSAGES, MOCK_TASKS, MOCK_KNOWLEDGE_CASES, MOCK_NOTIFICATIONS } from "./mock-data";
+import { Requirement, Message, Task, KnowledgeCase, FollowUp, AppNotification, User, Client } from "@/types";
+import { MOCK_REQUIREMENTS, MOCK_MESSAGES, MOCK_TASKS, MOCK_KNOWLEDGE_CASES, MOCK_NOTIFICATIONS, MOCK_USERS, MOCK_CLIENTS } from "./mock-data";
 
 function getFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -14,6 +14,24 @@ function getFromStorage<T>(key: string, fallback: T): T {
 function saveToStorage<T>(key: string, value: T): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+export function getStoredUsers(): User[] {
+  return getFromStorage("synapse_users", MOCK_USERS);
+}
+
+export function saveStoredUsers(users: User[]): void {
+  saveToStorage("synapse_users", users);
+}
+
+// ── Clients ───────────────────────────────────────────────────────────────────
+export function getClients(): Client[] {
+  return getFromStorage("synapse_clients", MOCK_CLIENTS);
+}
+
+export function saveClients(clients: Client[]): void {
+  saveToStorage("synapse_clients", clients);
 }
 
 // ── Requirements ──────────────────────────────────────────────────────────────

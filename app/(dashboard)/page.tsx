@@ -1,12 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { useRole } from "@/lib/role-context";
-import { MOCK_REQUIREMENTS, MOCK_PROJECTS } from "@/lib/mock-data";
+import { MOCK_PROJECTS } from "@/lib/mock-data";
+import { getRequirements } from "@/lib/store";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RequirementCard } from "@/components/dashboard/RequirementCard";
-import type { ProjectStatus } from "@/types";
+import type { Requirement, ProjectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
 const PROJECT_STATUS_CONFIG: Record<ProjectStatus, { label: string; bg: string; color: string; tw: string }> = {
@@ -62,9 +64,14 @@ function ProjectCard({ project, onClick }: { project: typeof MOCK_PROJECTS[0]; o
 
 function BusinessDashboard() {
   const router = useRouter();
+  const [allRequirements, setAllRequirements] = useState<Requirement[]>([]);
 
-  const pendingRequirements = MOCK_REQUIREMENTS.filter(
-    (r) => r.status === "PENDING" || r.status === "EVALUATING"
+  useEffect(() => {
+    setAllRequirements(getRequirements());
+  }, []);
+
+  const pendingRequirements = allRequirements.filter(
+    (r) => r.status === "DRAFT" || r.status === "PENDING" || r.status === "EVALUATING"
   );
   const activeProjects = MOCK_PROJECTS.filter((p) => p.status !== "COMPLETED");
 
@@ -142,9 +149,15 @@ function BusinessDashboard() {
 
 function OptimizerDashboard({ optimizerName }: { optimizerName: string }) {
   const router = useRouter();
+  const [allRequirements, setAllRequirements] = useState<Requirement[]>([]);
 
-  const evaluatingReqs = MOCK_REQUIREMENTS
-    .filter((r) => r.status === "EVALUATING")
+  useEffect(() => {
+    // 优化师看不到 DRAFT 状态的需求
+    setAllRequirements(getRequirements().filter((r) => r.status !== "DRAFT"));
+  }, []);
+
+  const evaluatingReqs = allRequirements
+    .filter((r) => r.status === "EVALUATING" || r.status === "PENDING")
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   const myProjects = MOCK_PROJECTS.filter((p) => p.optimizerName === optimizerName);

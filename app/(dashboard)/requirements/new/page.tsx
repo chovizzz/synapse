@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ChevronRight, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -8,11 +8,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { StepIndicator } from "@/components/requirements/StepIndicator";
 import { ParseAnimation } from "@/components/requirements/ParseAnimation";
 import { useRole } from "@/lib/role-context";
-import { getRequirements, saveRequirements } from "@/lib/store";
+import { getRequirements, saveRequirements, getClients, getStoredUsers } from "@/lib/store";
 import { generateId } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { MOCK_CLIENTS, MOCK_USERS } from "@/lib/mock-data";
-import { StructuredRequirement, Requirement } from "@/types";
+import { StructuredRequirement, Requirement, Client, User } from "@/types";
 import {
   Select,
   SelectContent,
@@ -41,7 +40,6 @@ const FIELD_LABELS: Record<keyof Omit<StructuredRequirement, "ambiguous_fields">
   policy_notes: "政策备注",
 };
 
-// 需要用 number 输入框的字段
 const NUMBER_FIELDS: Array<keyof Omit<StructuredRequirement, "ambiguous_fields">> = [
   "daily_budget_usd",
   "target_roi",
@@ -53,9 +51,20 @@ export default function NewRequirementPage() {
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
+  // 从 store 加载客户和优化师
+  const [clients, setClients] = useState<Client[]>([]);
+  const [optimizers, setOptimizers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const allClients = getClients();
+    const allUsers = getStoredUsers();
+    setClients(allClients);
+    setOptimizers(allUsers.filter((u) => u.role === "OPTIMIZER"));
+  }, []);
+
   // Step 1
   const [rawInput, setRawInput] = useState("");
-  const [selectedClientId, setSelectedClientId] = useState(MOCK_CLIENTS[0].id);
+  const [selectedClientId, setSelectedClientId] = useState("");
   const [customClient, setCustomClient] = useState("");
 
   // Step 2
@@ -65,17 +74,19 @@ export default function NewRequirementPage() {
 
   // Step 3
   const [editableData, setEditableData] = useState<StructuredRequirement | null>(null);
-  const [assignedOptimizerId, setAssignedOptimizerId] = useState(
-    MOCK_USERS.find((u) => u.role === "OPTIMIZER")?.id ?? ""
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const optimizers = MOCK_USERS.filter((u) => u.role === "OPTIMIZER");
+  // 客户加载完后设置默认选中
+  useEffect(() => {
+    if (clients.length > 0 && !selectedClientId) {
+      setSelectedClientId(clients[0].id);
+    }
+  }, [clients, selectedClientId]);
 
   const clientName =
     selectedClientId === "__custom__"
       ? customClient.trim() || "未知客户"
-      : MOCK_CLIENTS.find((c) => c.id === selectedClientId)?.name ?? "未知客户";
+      : clients.find((c) => c.id === selectedClientId)?.name ?? "未知客户";
 
   // ── Step 1 → 2: AI 解析 ──────────────────────────────────────────────────
   async function handleParse() {
@@ -108,13 +119,12 @@ export default function NewRequirementPage() {
     setStep(3);
   }
 
-  // ── Step 3: 提交 ──────────────────────────────────────────────────────────
+  // ── Step 3: 保存为草稿（DRAFT）──────────────────────────────────────────
   async function handleSubmit() {
     if (!editableData) return;
     setIsSubmitting(true);
 
     const newId = `r-${generateId()}`;
-    const optimizer = MOCK_USERS.find((u) => u.id === assignedOptimizerId);
 
     const newReq: Requirement = {
       id: newId,
@@ -122,11 +132,9 @@ export default function NewRequirementPage() {
       clientName,
       creatorId: currentUser.id,
       creatorName: currentUser.name,
-      assignedOptimizerId: optimizer?.id,
-      assignedOptimizerName: optimizer?.name,
       rawInput,
       structuredData: editableData,
-      status: "EVALUATING",
+      status: "DRAFT",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -145,7 +153,7 @@ export default function NewRequirementPage() {
         if (json.success) {
           const reqs = getRequirements();
           const updated = reqs.map((r) =>
-            r.id === newId ? { ...r, aiEvaluation: json.data, status: "PENDING" as const } : r
+            r.id === newId ? { ...r, aiEvaluation: json.data } : r
           );
           saveRequirements(updated);
         }
@@ -191,7 +199,7 @@ export default function NewRequirementPage() {
                   <SelectValue placeholder="选择客户" />
                 </SelectTrigger>
                 <SelectContent>
-                  {MOCK_CLIENTS.map((c) => (
+                  {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>
@@ -356,7 +364,7 @@ export default function NewRequirementPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(Object.keys(FIELD_LABELS) as Array<keyof typeof FIELD_LABELS>).map((key) => {
                   const isNum = NUMBER_FIELDS.includes(key);
                   const rawVal = editableData[key];
@@ -394,22 +402,19 @@ export default function NewRequirementPage() {
               </div>
             </div>
 
-            {/* 分配优化师 */}
-            <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 space-y-3">
-              <p className="text-sm font-medium text-[hsl(var(--foreground))]">分配优化师</p>
-              <Select value={assignedOptimizerId} onValueChange={(v) => setAssignedOptimizerId(v ?? "")}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="暂不分配" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">暂不分配</SelectItem>
-                  {optimizers.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* 提示说明 */}
+            <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 flex gap-3">
+              <div className="text-violet-400 mt-0.5 flex-shrink-0">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-violet-400">保存为草稿，先预览 AI 评估</p>
+                <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+                  需求将保存为草稿（仅你可见），AI 会自动运行评估。你可以和 AI 对话调整评估，满意后再提交给优化师。
+                </p>
+              </div>
             </div>
 
             {/* 提交按钮 */}
@@ -436,12 +441,12 @@ export default function NewRequirementPage() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    提交中...
+                    保存中...
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    提交需求
+                    保存草稿并预览评估
                   </>
                 )}
               </button>

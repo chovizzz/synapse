@@ -5,6 +5,7 @@ import type { Requirement, RequirementStatus } from "@/types";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<RequirementStatus, { label: string; bg: string; color: string }> = {
+  DRAFT: { label: "草稿", bg: "rgba(139,92,246,0.1)", color: "rgb(167,139,250)" },
   PENDING: { label: "待分配", bg: "rgba(234,179,8,0.1)", color: "rgb(250,204,21)" },
   EVALUATING: { label: "评估中", bg: "rgba(59,130,246,0.1)", color: "rgb(96,165,250)" },
   ACCEPTED: { label: "已接单", bg: "rgba(34,197,94,0.1)", color: "rgb(74,222,128)" },

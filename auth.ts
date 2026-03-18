@@ -1,10 +1,26 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { MOCK_USERS } from "@/lib/mock-data";
+import fs from "fs";
+import path from "path";
+
+const USERS_FILE = path.join(process.cwd(), "data", "users.json");
+
+function readRegisteredUsers(): typeof MOCK_USERS {
+  try {
+    const raw = fs.readFileSync(USERS_FILE, "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
 
 function getUsers() {
-  // Server-side only: read from mock data (in production would query DB)
-  return MOCK_USERS;
+  const registered = readRegisteredUsers();
+  // Merge mock users with registered users; registered users take precedence if same email
+  const registeredEmails = new Set(registered.map((u) => u.email));
+  const filteredMock = MOCK_USERS.filter((u) => !registeredEmails.has(u.email));
+  return [...filteredMock, ...registered];
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

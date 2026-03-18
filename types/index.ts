@@ -3,6 +3,7 @@ export type UserRole = "BUSINESS" | "OPTIMIZER" | "ADMIN";
 
 // 需求状态
 export type RequirementStatus =
+  | "DRAFT"        // 草稿（商务预审中，仅商务可见）
   | "PENDING"      // 待分配
   | "EVALUATING"   // 评估中
   | "ACCEPTED"     // 已接单

@@ -4,17 +4,18 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  ChevronRight, ChevronDown, ChevronUp, Check, Loader2,
+  ChevronRight, ChevronDown, ChevronUp, Check, CheckCircle2, Loader2,
   Send, MessageSquare, X, Bot, Info, BarChart2, History
 } from "lucide-react";
-import type { Requirement, AIEvaluation, FollowUp } from "@/types";
-import { getRequirements, saveRequirements, getFollowUps, addFollowUp } from "@/lib/store";
+import type { Requirement, AIEvaluation, FollowUp, User } from "@/types";
+import { getRequirements, saveRequirements, getFollowUps, addFollowUp, getStoredUsers } from "@/lib/store";
 import { useRole } from "@/lib/role-context";
 import { formatDate, generateId, cn } from "@/lib/utils";
 import { EvaluationCard } from "@/components/evaluation/EvaluationCard";
 import AIChat from "@/components/requirements/AIChat";
 
 const STATUS_CONFIG = {
+  DRAFT: { label: "草稿", tw: "bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400" },
   PENDING: { label: "待分配", tw: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400" },
   EVALUATING: { label: "评估中", tw: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400" },
   ACCEPTED: { label: "已接单", tw: "bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400" },
@@ -208,6 +209,11 @@ export default function RequirementDetailPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [followUpInput, setFollowUpInput] = useState("");
 
+  // 商务预审：提交给优化师
+  const [optimizers, setOptimizers] = useState<User[]>([]);
+  const [selectedOptimizerId, setSelectedOptimizerId] = useState("");
+  const [isSubmittingToOptimizer, setIsSubmittingToOptimizer] = useState(false);
+
   const updateRequirement = useCallback((updated: Requirement) => {
     const all = getRequirements();
     const next = all.map((r) => (r.id === updated.id ? updated : r));
@@ -221,6 +227,11 @@ export default function RequirementDetailPage() {
     setRequirement(req);
     if (req?.aiEvaluation) setEvaluation(req.aiEvaluation);
     setFollowUps(getFollowUps(id));
+    // 加载优化师列表供商务选择
+    const allUsers = getStoredUsers();
+    const opts = allUsers.filter((u) => u.role === "OPTIMIZER");
+    setOptimizers(opts);
+    if (opts.length > 0) setSelectedOptimizerId(opts[0].id);
   }, [id]);
 
   useEffect(() => {
@@ -248,6 +259,21 @@ export default function RequirementDetailPage() {
       .finally(() => setIsEvaluating(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requirement?.id]);
+
+  const handleSubmitToOptimizer = () => {
+    if (!requirement) return;
+    const optimizer = optimizers.find((u) => u.id === selectedOptimizerId);
+    setIsSubmittingToOptimizer(true);
+    updateRequirement({
+      ...requirement,
+      status: "PENDING",
+      assignedOptimizerId: optimizer?.id,
+      assignedOptimizerName: optimizer?.name,
+      updatedAt: new Date().toISOString(),
+    });
+    setToast("已提交给优化师，等待响应");
+    setIsSubmittingToOptimizer(false);
+  };
 
   const handleAccept = () => {
     if (!requirement) return;
@@ -296,12 +322,20 @@ export default function RequirementDetailPage() {
   const sd = requirement.structuredData;
   const statusCfg = STATUS_CONFIG[requirement.status];
   const isOptimizer = currentUser.role === "OPTIMIZER";
+  const isBusiness = currentUser.role === "BUSINESS";
+  const isDraft = requirement.status === "DRAFT";
 
-  const timelineEvents = [
-    { label: "创建需求", time: requirement.createdAt, done: true },
-    { label: "AI 评估完成", time: evaluation ? requirement.updatedAt : null, done: !!evaluation },
-    { label: "等待优化师响应", time: null, done: false, active: true },
-  ];
+  const timelineEvents = isDraft
+    ? [
+        { label: "创建需求", time: requirement.createdAt, done: true },
+        { label: "AI 评估完成", time: evaluation ? requirement.updatedAt : null, done: !!evaluation },
+        { label: "提交给优化师", time: null, done: false, active: true },
+      ]
+    : [
+        { label: "创建需求", time: requirement.createdAt, done: true },
+        { label: "AI 评估完成", time: evaluation ? requirement.updatedAt : null, done: !!evaluation },
+        { label: "等待优化师响应", time: null, done: false, active: true },
+      ];
 
   return (
     <>
@@ -314,6 +348,19 @@ export default function RequirementDetailPage() {
           <ChevronRight size={12} />
           <span className="text-slate-900 dark:text-white font-medium">{requirement.clientName}</span>
         </div>
+
+        {/* DRAFT 提示横幅 */}
+        {isDraft && (
+          <div className="rounded-2xl border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/5 px-5 py-3 flex items-center gap-3">
+            <div className="h-2 w-2 rounded-full bg-violet-400 animate-pulse flex-shrink-0" />
+            <p className="text-sm text-violet-700 dark:text-violet-300 font-medium">
+              草稿 · 商务预审中
+            </p>
+            <span className="text-xs text-violet-500 dark:text-violet-400/70">
+              AI 评估结果仅你可见，查看并与 AI 对话优化后，再提交给优化师
+            </span>
+          </div>
+        )}
 
         {/* Client info card */}
         <div className="rounded-2xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--card))] p-5 shadow-sm">
@@ -573,8 +620,42 @@ export default function RequirementDetailPage() {
               <EvaluationCard evaluation={evaluation} isLoading={isEvaluating && !evaluation} />
             </div>
 
+            {/* 商务预审：提交给优化师 */}
+            {isBusiness && isDraft && (
+              <div className="rounded-2xl border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/5 p-5 shadow-sm space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">提交给优化师</h3>
+                <p className="text-xs text-slate-500 dark:text-[hsl(var(--muted-foreground))]">
+                  对 AI 评估结果满意后，选择优化师并提交。优化师将收到需求并进行接单评估。
+                </p>
+                <div className="space-y-2">
+                  <label className="text-xs text-slate-500 dark:text-[hsl(var(--muted-foreground))]">选择优化师</label>
+                  <select
+                    value={selectedOptimizerId}
+                    onChange={(e) => setSelectedOptimizerId(e.target.value)}
+                    className="w-full rounded-xl px-3 py-2 text-sm outline-none border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--secondary))] text-slate-800 dark:text-[hsl(var(--foreground))] focus:border-violet-400 transition-colors"
+                  >
+                    <option value="">暂不指定</option>
+                    {optimizers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={handleSubmitToOptimizer}
+                  disabled={isSubmittingToOptimizer}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmittingToOptimizer ? (
+                    <><Loader2 size={14} className="animate-spin" />提交中…</>
+                  ) : (
+                    <><CheckCircle2 size={14} />提交给优化师</>
+                  )}
+                </button>
+              </div>
+            )}
+
             {/* Optimizer actions */}
-            {isOptimizer && (
+            {isOptimizer && !isDraft && (
               <div className="rounded-2xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--card))] p-5 shadow-sm space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-[hsl(var(--muted-foreground))]">操作</h3>
                 <div className="flex gap-2">
