@@ -73,7 +73,7 @@ export default function RequirementsPage() {
               onClick={() => setActiveTab(tab.key)}
               className={cn(
                 "px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5",
-                activeTab === tab.key ? "text-white" : "hover:text-white"
+                activeTab === tab.key ? "text-white" : "hover:text-[hsl(var(--foreground))]"
               )}
               style={
                 activeTab === tab.key
@@ -133,13 +133,13 @@ export default function RequirementsPage() {
                   <tr
                     key={req.id}
                     onClick={() => router.push(`/requirements/${req.id}`)}
-                    className="border-b last:border-b-0 cursor-pointer transition-colors hover:bg-white/5"
+                    className="border-b last:border-b-0 cursor-pointer transition-colors hover:bg-[hsl(var(--accent))]"
                     style={{
                       borderColor: idx === filtered.length - 1 ? "transparent" : "hsl(var(--border))",
                     }}
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium text-white">{req.clientName}</div>
+                      <div className="font-medium text-[hsl(var(--foreground))]">{req.clientName}</div>
                       <div
                         className="text-xs mt-0.5"
                         style={{ color: "hsl(var(--muted-foreground))" }}
@@ -158,12 +158,12 @@ export default function RequirementsPage() {
                         {req.structuredData?.media_platform ?? "—"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-white">
+                    <td className="px-4 py-3 text-[hsl(var(--foreground))]">
                       {req.structuredData?.daily_budget_usd != null
                         ? formatCurrency(req.structuredData.daily_budget_usd)
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 text-white">
+                    <td className="px-4 py-3 text-[hsl(var(--foreground))]">
                       {req.structuredData?.target_kpi ?? "—"}
                     </td>
                     <td className="px-4 py-3" style={{ color: "hsl(var(--muted-foreground))" }}>

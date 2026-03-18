@@ -40,7 +40,7 @@ export function RequirementCard({ requirement, showScore }: RequirementCardProps
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-white text-sm truncate">{requirement.clientName}</div>
+          <div className="font-medium text-[hsl(var(--foreground))] text-sm truncate">{requirement.clientName}</div>
           {requirement.structuredData && (
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <span

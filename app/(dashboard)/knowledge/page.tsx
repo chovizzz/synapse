@@ -62,7 +62,7 @@ export default function KnowledgePage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <BookOpen size={20} style={{ color: "hsl(var(--primary))" }} />
-            <h1 className="text-xl font-bold text-white">经验知识库</h1>
+            <h1 className="text-xl font-bold text-[hsl(var(--foreground))]">经验知识库</h1>
           </div>
           <p className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
             基于真实投放数据的策略沉淀
@@ -105,7 +105,7 @@ export default function KnowledgePage() {
       >
         <span>
           共{" "}
-          <strong className="text-white">{allCases.length}</strong>{" "}
+          <strong className="text-[hsl(var(--foreground))]">{allCases.length}</strong>{" "}
           个案例
         </span>
         <span className="opacity-30">|</span>
@@ -117,7 +117,7 @@ export default function KnowledgePage() {
         <span className="opacity-30">|</span>
         <span>
           覆盖{" "}
-          <strong className="text-white">{industryCount}</strong>{" "}
+          <strong className="text-[hsl(var(--foreground))]">{industryCount}</strong>{" "}
           个行业
         </span>
         {(selectedIndustry || selectedMedia || selectedRegion || searchQuery) && (

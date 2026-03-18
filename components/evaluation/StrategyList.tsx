@@ -16,7 +16,7 @@ export function StrategyList({ suggestions }: StrategyListProps) {
             <span className="text-xs font-bold text-blue-400 flex-shrink-0 tabular-nums w-5">
               {String(idx + 1).padStart(2, "0")}
             </span>
-            <p className="text-xs text-white/80 leading-relaxed">{text}</p>
+            <p className="text-xs text-[hsl(var(--foreground))]/80 leading-relaxed">{text}</p>
           </div>
         </div>
       ))}

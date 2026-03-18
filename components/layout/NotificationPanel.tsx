@@ -106,7 +106,7 @@ export default function NotificationPanel({ open, onClose }: Props) {
             >
               <div className="flex items-center gap-2">
                 <Bell size={15} style={{ color: "hsl(var(--primary))" }} />
-                <span className="text-sm font-semibold text-white">通知</span>
+                <span className="text-sm font-semibold text-[hsl(var(--foreground))]">通知</span>
                 {unreadCount > 0 && (
                   <span
                     className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white"
@@ -119,7 +119,7 @@ export default function NotificationPanel({ open, onClose }: Props) {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAll}
-                  className="flex items-center gap-1 text-xs transition-colors hover:text-white"
+                  className="flex items-center gap-1 text-xs transition-colors hover:text-[hsl(var(--foreground))]"
                   style={{ color: "hsl(var(--muted-foreground))" }}
                 >
                   <CheckCheck size={13} />
@@ -142,7 +142,7 @@ export default function NotificationPanel({ open, onClose }: Props) {
                   <button
                     key={n.id}
                     onClick={() => handleClick(n)}
-                    className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 border-b last:border-b-0"
+                    className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[hsl(var(--accent))] border-b last:border-b-0"
                     style={{
                       borderColor: "hsl(var(--border))",
                       backgroundColor: n.read ? "transparent" : "hsl(var(--primary) / 0.04)",
@@ -154,7 +154,7 @@ export default function NotificationPanel({ open, onClose }: Props) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <span
-                          className={`text-sm font-medium leading-snug ${n.read ? "" : "text-white"}`}
+                          className={`text-sm font-medium leading-snug ${n.read ? "" : "text-[hsl(var(--foreground))]"}`}
                           style={n.read ? { color: "hsl(var(--muted-foreground))" } : {}}
                         >
                           {n.title}
@@ -191,7 +191,7 @@ export default function NotificationPanel({ open, onClose }: Props) {
                 style={{ borderColor: "hsl(var(--border))" }}
               >
                 <button
-                  className="text-xs transition-colors hover:text-white"
+                  className="text-xs transition-colors hover:text-[hsl(var(--foreground))]"
                   style={{ color: "hsl(var(--muted-foreground))" }}
                   onClick={() => { handleMarkAll(); onClose(); }}
                 >

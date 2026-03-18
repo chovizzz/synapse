@@ -153,7 +153,7 @@ export default function NewRequirementPage() {
     <div className="max-w-3xl mx-auto space-y-8">
       {/* 页面标题 */}
       <div>
-        <h1 className="text-2xl font-bold text-white">新建客户需求</h1>
+        <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">新建客户需求</h1>
         <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
           粘贴客户原话，AI 自动解析为结构化需求单
         </p>

@@ -70,7 +70,7 @@ export function CaseCard({ case: c, onClick }: CaseCardProps) {
       </div>
 
       {/* Title */}
-      <h3 className="text-sm font-semibold text-white mb-3 leading-snug">
+      <h3 className="text-sm font-semibold text-[hsl(var(--foreground))] mb-3 leading-snug">
         {c.title}
       </h3>
 

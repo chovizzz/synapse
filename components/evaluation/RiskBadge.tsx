@@ -47,7 +47,7 @@ export function RiskBadge({ level, description }: RiskBadgeProps) {
           <span className={`text-xs font-semibold ${cfg.text}`}>
             {cfg.label}
           </span>
-          <p className="text-xs text-white/80 leading-relaxed">{description}</p>
+          <p className="text-xs text-[hsl(var(--foreground))]/80 leading-relaxed">{description}</p>
         </div>
       </div>
     </div>

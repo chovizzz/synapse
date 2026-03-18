@@ -23,8 +23,7 @@ interface EvaluationCardProps {
 function Skeleton({ className }: { className?: string }) {
   return (
     <div
-      className={`animate-pulse rounded ${className}`}
-      style={{ backgroundColor: "rgba(255,255,255,0.07)" }}
+      className={`animate-pulse rounded bg-[hsl(var(--muted))] ${className}`}
     />
   );
 }
@@ -98,11 +97,8 @@ export function EvaluationCard({ evaluation, isLoading }: EvaluationCardProps) {
 
       {/* Similar case */}
       {evaluation.similar_case_hint && (
-        <div
-          className="rounded-lg p-3"
-          style={{ backgroundColor: "rgba(255,255,255,0.04)" }}
-        >
-          <p className="text-xs italic leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>
+        <div className="rounded-lg p-3 bg-[hsl(var(--secondary))]">
+          <p className="text-xs italic leading-relaxed text-[hsl(var(--muted-foreground))]">
             💡 {evaluation.similar_case_hint}
           </p>
         </div>
