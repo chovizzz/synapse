@@ -1,10 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, Menu } from "lucide-react";
+import { Bell, Menu, LogOut } from "lucide-react";
 import { useRole } from "@/lib/role-context";
-import { MOCK_REQUIREMENTS } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
+import NotificationPanel from "@/components/layout/NotificationPanel";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "首页看板",
@@ -19,16 +19,16 @@ interface TopBarProps {
 
 export function TopBar({ onMenuToggle }: TopBarProps) {
   const pathname = usePathname();
-  const { currentUser, setRole } = useRole();
+  const { currentUser, logout } = useRole();
+  const [notifOpen, setNotifOpen] = useState(false);
 
-  const title = PAGE_TITLES[pathname] ?? "首页看板";
-  const pendingCount = MOCK_REQUIREMENTS.filter(
-    (r) => r.status === "PENDING" || r.status === "EVALUATING"
-  ).length;
+  const title = Object.entries(PAGE_TITLES).find(([path]) =>
+    path === "/" ? pathname === "/" : pathname.startsWith(path)
+  )?.[1] ?? "首页看板";
 
   return (
     <header
-      className="h-14 sm:h-16 flex items-center px-3 sm:px-6 border-b flex-shrink-0 gap-2"
+      className="h-14 sm:h-16 flex items-center px-3 sm:px-6 border-b flex-shrink-0 gap-2 relative"
       style={{
         backgroundColor: "hsl(var(--card))",
         borderColor: "hsl(var(--border))",
@@ -48,75 +48,31 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
 
       {/* Right section */}
       <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
-        {/* Role switch — hidden on very small screens, shown sm+ */}
-        <div
-          className="hidden sm:flex items-center gap-1 rounded-lg p-1"
-          style={{ backgroundColor: "hsl(var(--background))" }}
-        >
-          <button
-            onClick={() => setRole("BUSINESS")}
-            className={cn(
-              "px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-              currentUser.role === "BUSINESS"
-                ? "text-white"
-                : "border hover:text-white"
-            )}
-            style={
-              currentUser.role === "BUSINESS"
-                ? { backgroundColor: "hsl(var(--primary))" }
-                : {
-                    borderColor: "hsl(var(--border))",
-                    color: "hsl(var(--muted-foreground))",
-                  }
-            }
-          >
-            商务
-          </button>
-          <button
-            onClick={() => setRole("OPTIMIZER")}
-            className={cn(
-              "px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-              currentUser.role === "OPTIMIZER"
-                ? "text-white"
-                : "border hover:text-white"
-            )}
-            style={
-              currentUser.role === "OPTIMIZER"
-                ? { backgroundColor: "hsl(var(--primary))" }
-                : {
-                    borderColor: "hsl(var(--border))",
-                    color: "hsl(var(--muted-foreground))",
-                  }
-            }
-          >
-            优化师
-          </button>
-        </div>
-
-        {/* Mobile role toggle (compact) */}
-        <button
-          onClick={() => setRole(currentUser.role === "BUSINESS" ? "OPTIMIZER" : "BUSINESS")}
-          className="sm:hidden px-2 py-1 rounded-md text-xs font-medium text-white transition-all flex-shrink-0"
-          style={{ backgroundColor: "hsl(var(--primary))" }}
+        {/* Role badge */}
+        <span
+          className="hidden sm:inline-flex text-xs px-2.5 py-1 rounded-full font-medium"
+          style={
+            currentUser.role === "BUSINESS"
+              ? { backgroundColor: "rgba(59,130,246,0.12)", color: "rgb(96,165,250)" }
+              : { backgroundColor: "rgba(34,197,94,0.12)", color: "rgb(74,222,128)" }
+          }
         >
           {currentUser.role === "BUSINESS" ? "商务" : "优化师"}
-        </button>
+        </span>
 
-        {/* Divider — desktop only */}
+        {/* Divider */}
         <div className="hidden sm:block w-px h-6" style={{ backgroundColor: "hsl(var(--border))" }} />
 
         {/* Notification bell */}
-        <button className="relative p-2 rounded-lg transition-colors hover:bg-white/5">
-          <Bell size={18} style={{ color: "hsl(var(--muted-foreground))" }} />
-          {pendingCount > 0 && (
-            <span
-              className="absolute top-1 right-1 w-4 h-4 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
-              style={{ backgroundColor: "hsl(var(--primary))" }}
-            >
-              {pendingCount}
-            </span>
-          )}
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setNotifOpen((v) => !v)}
+            className="relative p-2 rounded-lg transition-colors hover:bg-white/5"
+          >
+            <Bell size={18} style={{ color: "hsl(var(--muted-foreground))" }} />
+          </button>
+          <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+        </div>
 
         {/* User avatar + name */}
         <div className="flex items-center gap-2">
@@ -131,18 +87,17 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
           </div>
           <div className="hidden sm:block">
             <div className="text-sm font-medium text-white leading-none">{currentUser.name}</div>
-            <div
-              className="text-[10px] mt-0.5"
-              style={
-                currentUser.role === "BUSINESS"
-                  ? { color: "rgb(96,165,250)" }
-                  : { color: "rgb(74,222,128)" }
-              }
-            >
-              {currentUser.role === "BUSINESS" ? "商务" : "优化师"}
-            </div>
           </div>
         </div>
+
+        {/* Logout */}
+        <button
+          onClick={logout}
+          className="p-2 rounded-lg transition-colors hover:bg-white/5"
+          title="退出登录"
+        >
+          <LogOut size={16} style={{ color: "hsl(var(--muted-foreground))" }} />
+        </button>
       </div>
     </header>
   );

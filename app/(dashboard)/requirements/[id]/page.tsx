@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronRight, ChevronDown, ChevronUp, Check, Loader2 } from "lucide-react";
-import type { Requirement, AIEvaluation } from "@/types";
-import { getRequirements, saveRequirements } from "@/lib/store";
+import { ChevronRight, ChevronDown, ChevronUp, Check, Loader2, Send, MessageSquare } from "lucide-react";
+import type { Requirement, AIEvaluation, FollowUp } from "@/types";
+import { getRequirements, saveRequirements, getFollowUps, addFollowUp } from "@/lib/store";
 import { useRole } from "@/lib/role-context";
-import { formatDate } from "@/lib/utils";
+import { formatDate, generateId } from "@/lib/utils";
 import { EvaluationCard } from "@/components/evaluation/EvaluationCard";
+import AIChat from "@/components/requirements/AIChat";
 
 const STATUS_CONFIG = {
   PENDING: { label: "待分配", bg: "rgba(234,179,8,0.1)", color: "rgb(250,204,21)" },
@@ -52,6 +53,12 @@ export default function RequirementDetailPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
+  // Follow-up dialog state
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [followUpInput, setFollowUpInput] = useState("");
+  const followUpEndRef = useRef<HTMLDivElement>(null);
+
   const updateRequirement = useCallback((updated: Requirement) => {
     const all = getRequirements();
     const next = all.map((r) => (r.id === updated.id ? updated : r));
@@ -59,7 +66,7 @@ export default function RequirementDetailPage() {
     setRequirement(updated);
   }, []);
 
-  // Load requirement
+  // Load requirement + follow-ups
   useEffect(() => {
     const reqs = getRequirements();
     const req = reqs.find((r) => r.id === id) ?? null;
@@ -67,7 +74,13 @@ export default function RequirementDetailPage() {
     if (req?.aiEvaluation) {
       setEvaluation(req.aiEvaluation);
     }
+    setFollowUps(getFollowUps(id));
   }, [id]);
+
+  // Scroll follow-up to bottom
+  useEffect(() => {
+    followUpEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [followUps, followUpOpen]);
 
   // Auto-trigger AI evaluation if needed
   useEffect(() => {
@@ -123,8 +136,21 @@ export default function RequirementDetailPage() {
     setRejectReason("");
   };
 
-  const handleFollowUp = () => {
-    setToast("已向商务发送追问通知");
+  const handleSendFollowUp = () => {
+    const content = followUpInput.trim();
+    if (!content) return;
+    const fu: FollowUp = {
+      id: generateId(),
+      requirementId: id,
+      fromId: currentUser.id,
+      fromName: currentUser.name,
+      fromRole: currentUser.role,
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    addFollowUp(fu);
+    setFollowUps((prev) => [...prev, fu]);
+    setFollowUpInput("");
   };
 
   if (!requirement) {
@@ -392,6 +418,14 @@ export default function RequirementDetailPage() {
               <EvaluationCard evaluation={evaluation} isLoading={isEvaluating && !evaluation} />
             </div>
 
+            {/* AI Chat — available once evaluation is done */}
+            {evaluation && requirement.structuredData && (
+              <AIChat
+                requirementData={requirement.structuredData}
+                evaluationData={evaluation}
+              />
+            )}
+
             {/* Optimizer actions */}
             {isOptimizer && (
               <div
@@ -427,17 +461,121 @@ export default function RequirementDetailPage() {
                     拒绝
                   </button>
                   <button
-                    onClick={handleFollowUp}
-                    className="flex-1 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/10"
+                    onClick={() => setFollowUpOpen((v) => !v)}
+                    className="flex-1 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/10 flex items-center justify-center gap-1"
                     style={{
-                      border: "1px solid hsl(var(--border))",
-                      color: "hsl(var(--muted-foreground))",
+                      border: `1px solid ${followUpOpen ? "hsl(var(--primary))" : "hsl(var(--border))"}`,
+                      color: followUpOpen ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
                       backgroundColor: "transparent",
                     }}
                   >
+                    <MessageSquare size={14} />
                     追问
+                    {followUps.length > 0 && (
+                      <span
+                        className="text-[10px] px-1 rounded-full font-bold"
+                        style={{ backgroundColor: "hsl(var(--primary) / 0.2)", color: "hsl(var(--primary))" }}
+                      >
+                        {followUps.length}
+                      </span>
+                    )}
                   </button>
                 </div>
+
+                {/* Follow-up dialog */}
+                <AnimatePresence>
+                  {followUpOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <div
+                        className="mt-2 rounded-lg border overflow-hidden"
+                        style={{ borderColor: "hsl(var(--border))" }}
+                      >
+                        {/* Messages */}
+                        <div
+                          className="max-h-48 overflow-y-auto p-3 space-y-2"
+                          style={{ backgroundColor: "hsl(var(--background))" }}
+                        >
+                          {followUps.length === 0 ? (
+                            <p className="text-xs text-center py-4" style={{ color: "hsl(var(--muted-foreground))" }}>
+                              暂无追问记录，发起第一条追问
+                            </p>
+                          ) : (
+                            followUps.map((fu) => {
+                              const isOwn = fu.fromId === currentUser.id;
+                              return (
+                                <div key={fu.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                                  <div className="max-w-[85%] space-y-0.5">
+                                    <div
+                                      className={`text-[10px] ${isOwn ? "text-right" : ""}`}
+                                      style={{ color: "hsl(var(--muted-foreground))" }}
+                                    >
+                                      {fu.fromName} · {fu.fromRole === "OPTIMIZER" ? "优化师" : "商务"}
+                                    </div>
+                                    <div
+                                      className="text-xs px-3 py-2 rounded-xl leading-relaxed"
+                                      style={{
+                                        backgroundColor: isOwn ? "hsl(var(--primary))" : "hsl(var(--secondary))",
+                                        color: isOwn ? "white" : "hsl(var(--foreground))",
+                                        borderRadius: isOwn ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+                                      }}
+                                    >
+                                      {fu.content}
+                                    </div>
+                                    <div
+                                      className={`text-[10px] ${isOwn ? "text-right" : ""}`}
+                                      style={{ color: "hsl(var(--muted-foreground))" }}
+                                    >
+                                      {formatDate(fu.createdAt)}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                          <div ref={followUpEndRef} />
+                        </div>
+
+                        {/* Input */}
+                        <div
+                          className="flex items-end gap-2 p-2 border-t"
+                          style={{ borderColor: "hsl(var(--border))", backgroundColor: "hsl(var(--card))" }}
+                        >
+                          <textarea
+                            value={followUpInput}
+                            onChange={(e) => setFollowUpInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSendFollowUp();
+                              }
+                            }}
+                            placeholder={currentUser.role === "OPTIMIZER" ? "发起追问…" : "回复优化师追问…"}
+                            rows={2}
+                            className="flex-1 resize-none rounded-lg px-3 py-2 text-xs outline-none"
+                            style={{
+                              backgroundColor: "hsl(var(--secondary))",
+                              border: "1px solid hsl(var(--border))",
+                              color: "hsl(var(--foreground))",
+                            }}
+                          />
+                          <button
+                            onClick={handleSendFollowUp}
+                            disabled={!followUpInput.trim()}
+                            className="flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30"
+                            style={{ backgroundColor: "hsl(var(--primary))" }}
+                          >
+                            <Send size={13} className="text-white" />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <AnimatePresence>
                   {rejectMode && (

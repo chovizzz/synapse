@@ -128,5 +128,47 @@ export async function evaluateRequirement(structuredData: Record<string, unknown
   return JSON.parse(text);
 }
 
+// 多轮对话（带上下文）
+export async function chatWithContext(
+  systemContext: string,
+  messages: Array<{ role: "user" | "assistant"; content: string }>
+): Promise<string> {
+  if (useDeepSeek) {
+    const res = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${DEEPSEEK_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: systemContext },
+          ...messages,
+        ],
+        temperature: 0.6,
+        max_tokens: 1024,
+      }),
+    });
+    if (!res.ok) throw new Error(`DeepSeek API error: ${res.status}`);
+    const json = await res.json();
+    return json.choices?.[0]?.message?.content || "抱歉，无法生成回复";
+  } else {
+    // Gemini doesn't support direct multi-turn with system prompt in the same way,
+    // so we embed history into a single prompt
+    const history = messages
+      .map((m) => `${m.role === "user" ? "用户" : "AI"}：${m.content}`)
+      .join("\n");
+    const fullPrompt = `${systemContext}\n\n以下是对话历史：\n${history}`;
+    const ai = getGemini();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: fullPrompt,
+      config: { temperature: 0.6 },
+    });
+    return response.text || "抱歉，无法生成回复";
+  }
+}
+
 // 导出当前使用的提供商，方便调试
 export const AI_PROVIDER = useDeepSeek ? "DeepSeek" : "Gemini";

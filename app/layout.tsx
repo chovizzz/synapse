@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SessionProvider } from "next-auth/react";
 import { RoleProvider } from "@/lib/role-context";
 
 export const metadata: Metadata = {
@@ -11,7 +12,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body>
-        <RoleProvider>{children}</RoleProvider>
+        <SessionProvider>
+          <RoleProvider>{children}</RoleProvider>
+        </SessionProvider>
       </body>
     </html>
   );

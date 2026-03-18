@@ -1,26 +1,41 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
-import { User, UserRole } from "@/types";
-import { MOCK_USERS } from "./mock-data";
+import { createContext, useContext, ReactNode } from "react";
+import { useSession, signOut } from "next-auth/react";
+import type { User, UserRole } from "@/types";
 
 interface RoleContextType {
   currentUser: User;
-  setRole: (role: UserRole) => void;
+  logout: () => void;
 }
 
 const RoleContext = createContext<RoleContextType | null>(null);
 
-export function RoleProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]); // 默认商务小王
+const FALLBACK_USER: User = {
+  id: "u1",
+  name: "商务小王",
+  email: "wang@synapse.demo",
+  role: "BUSINESS",
+};
 
-  const setRole = (role: UserRole) => {
-    const user = MOCK_USERS.find((u) => u.role === role) || MOCK_USERS[0];
-    setCurrentUser(user);
+export function RoleProvider({ children }: { children: ReactNode }) {
+  const { data: session } = useSession();
+
+  const currentUser: User = session?.user
+    ? {
+        id: (session.user as { id?: string }).id || "unknown",
+        name: session.user.name || "用户",
+        email: session.user.email || "",
+        role: ((session.user as { role?: string }).role as UserRole) || "BUSINESS",
+      }
+    : FALLBACK_USER;
+
+  const logout = () => {
+    signOut({ callbackUrl: "/login" });
   };
 
   return (
-    <RoleContext.Provider value={{ currentUser, setRole }}>
+    <RoleContext.Provider value={{ currentUser, logout }}>
       {children}
     </RoleContext.Provider>
   );

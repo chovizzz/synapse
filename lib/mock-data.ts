@@ -1,4 +1,4 @@
-import { User, Client, Requirement, Project, Message, Task, KnowledgeCase } from "@/types";
+import { User, Client, Requirement, Project, Message, Task, KnowledgeCase, AppNotification } from "@/types";
 
 export const MOCK_USERS: User[] = [
   { id: "u1", name: "商务小王", email: "wang@synapse.demo", role: "BUSINESS" },
@@ -290,5 +290,44 @@ export const MOCK_KNOWLEDGE_CASES: KnowledgeCase[] = [
     tags: ["电商", "Meta", "全球", "ROAS", "ASC"],
     isHighlight: false,
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
+export const MOCK_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: "n1",
+    type: "NEW_REQUIREMENT",
+    title: "新需求待评估",
+    body: "商务小王提交了星辰游戏的北美投放需求，请尽快评估",
+    read: false,
+    link: "/requirements/r1",
+    createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "n2",
+    type: "EVAL_DONE",
+    title: "AI 评估已完成",
+    body: "荣华电商的东南亚需求评估完成，成功率 68%，可查看详情",
+    read: false,
+    link: "/requirements/r2",
+    createdAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "n3",
+    type: "ACCEPTED",
+    title: "优化师已接单",
+    body: "优化师小李接受了你的广告需求，项目正式启动",
+    read: true,
+    link: "/projects/p1",
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "n4",
+    type: "FOLLOW_UP",
+    title: "优化师有追问",
+    body: "优化师小李对星辰游戏需求提出追问：目标受众年龄段是否有限制？",
+    read: true,
+    link: "/requirements/r1",
+    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
   },
 ];

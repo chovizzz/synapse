@@ -113,6 +113,41 @@ export interface Task {
   completed: boolean;
 }
 
+// 追问消息（优化师→商务 or 商务→优化师，挂在需求上）
+export interface FollowUp {
+  id: string;
+  requirementId: string;
+  fromId: string;
+  fromName: string;
+  fromRole: UserRole;
+  content: string;
+  createdAt: string;
+}
+
+// 通知
+export type NotificationType =
+  | "NEW_REQUIREMENT"
+  | "EVAL_DONE"
+  | "FOLLOW_UP"
+  | "ACCEPTED"
+  | "REJECTED";
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  read: boolean;
+  link?: string;
+  createdAt: string;
+}
+
+// AI 多轮对话消息
+export interface AIChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 // 知识库案例
 export interface KnowledgeCase {
   id: string;

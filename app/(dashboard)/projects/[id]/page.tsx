@@ -8,7 +8,20 @@ import type { Project, Message, Task } from "@/types";
 import { MOCK_PROJECTS } from "@/lib/mock-data";
 import { getMessages, addMessage, getTasks } from "@/lib/store";
 import { useRole } from "@/lib/role-context";
-import { formatDate, generateId, formatCurrency } from "@/lib/utils";
+import { generateId, formatCurrency } from "@/lib/utils";
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return "刚刚";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} 天前`;
+  return new Date(dateStr).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+}
 
 const PROJECT_STATUS_LABEL: Record<string, string> = {
   STRATEGY: "策略制定",
@@ -61,7 +74,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
           {msg.content}
         </div>
         <span className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>
-          {formatDate(msg.createdAt)}
+          {timeAgo(msg.createdAt)}
         </span>
       </div>
     );
@@ -93,7 +106,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
         {msg.content}
       </div>
       <span className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>
-        {formatDate(msg.createdAt)}
+        {timeAgo(msg.createdAt)}
       </span>
     </div>
   );
@@ -165,9 +178,9 @@ export default function ProjectBoardPage() {
     setTasks(getTasks(id));
   }, [id]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages and on initial load
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: messages.length > 1 ? "smooth" : "instant" });
   }, [messages]);
 
   const sendMessage = () => {
