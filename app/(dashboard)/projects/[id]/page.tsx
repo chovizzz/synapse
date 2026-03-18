@@ -8,7 +8,7 @@ import type { Project, Message, Task } from "@/types";
 import { MOCK_PROJECTS } from "@/lib/mock-data";
 import { getMessages, addMessage, getTasks } from "@/lib/store";
 import { useRole } from "@/lib/role-context";
-import { generateId, formatCurrency } from "@/lib/utils";
+import { generateId, formatCurrency, formatDate } from "@/lib/utils";
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
