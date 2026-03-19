@@ -5,12 +5,11 @@ import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Send, CheckSquare, Square, AlertCircle, TrendingUp, BarChart2,
-  FileText, MessageSquare, X, Loader2, Download
+  FileText, MessageSquare, X, Loader2, Download, CreditCard, Plus
 } from "lucide-react";
-import type { Project, Message, Task } from "@/types";
-import { MOCK_PROJECTS } from "@/lib/mock-data";
+import type { Project, Message, Task, RechargeRecord } from "@/types";
 import { generateAccountData } from "@/lib/account-data";
-import { getMessages, addMessage, getTasks } from "@/lib/store";
+import { getMessages, addMessage, getTasks, getProjects, updateProject, addRechargeRecord } from "@/lib/store";
 import { useRole } from "@/lib/role-context";
 import { generateId, formatCurrency, formatDate } from "@/lib/utils";
 import { SpendRoiChart } from "@/components/charts/SpendRoiChart";
@@ -360,6 +359,152 @@ function AIReportModal({ project, onClose }: { project: Project; onClose: () => 
   );
 }
 
+function RechargeModal({
+  project,
+  onClose,
+  onSuccess,
+}: {
+  project: Project;
+  onClose: () => void;
+  onSuccess: (updated: Project) => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleConfirm = () => {
+    const num = parseFloat(amount);
+    if (!num || num <= 0) {
+      setError("请输入有效的充值金额");
+      return;
+    }
+    setSaving(true);
+    const record: RechargeRecord = {
+      id: generateId(),
+      projectId: project.id,
+      projectName: project.clientName,
+      amount: num,
+      note: note.trim() || undefined,
+      createdAt: new Date().toISOString(),
+    };
+    addRechargeRecord(record);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const prevDaily = project.updatedAt?.slice(0, 10) === today ? (project.dailyRecharge ?? 0) : 0;
+    const updated: Project = {
+      ...project,
+      totalRecharge: (project.totalRecharge ?? 0) + num,
+      dailyRecharge: prevDaily + num,
+      updatedAt: new Date().toISOString(),
+    };
+    updateProject(updated);
+    setSaving(false);
+    onSuccess(updated);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-sm rounded-2xl bg-white dark:bg-[hsl(var(--card))] shadow-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-[hsl(var(--border))]">
+          <div className="flex items-center gap-2">
+            <CreditCard size={16} className="text-emerald-600 dark:text-emerald-400" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">广告账户充值</h3>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <X size={16} className="text-slate-400" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 space-y-4">
+          {/* Project info */}
+          <div className="rounded-xl bg-slate-50 dark:bg-[hsl(var(--secondary))] px-4 py-3">
+            <div className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">项目</div>
+            <div className="text-sm font-medium text-slate-800 dark:text-white mt-0.5">
+              {project.clientName} · {project.mediaPlatform}
+            </div>
+            {project.totalRecharge !== undefined && (
+              <div className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))] mt-1">
+                当前累计充值：<span className="text-emerald-600 dark:text-emerald-400 font-medium">{formatCurrency(project.totalRecharge)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Amount input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-600 dark:text-[hsl(var(--muted-foreground))]">
+              充值金额（USD）<span className="text-red-500 ml-0.5">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">$</span>
+              <input
+                type="number"
+                min="1"
+                step="100"
+                value={amount}
+                onChange={(e) => { setAmount(e.target.value); setError(""); }}
+                placeholder="0"
+                className="w-full pl-7 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--secondary))] text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-400 dark:focus:border-emerald-500 transition-colors"
+                autoFocus
+              />
+            </div>
+            {error && <p className="text-xs text-red-500">{error}</p>}
+            {/* Quick amount buttons */}
+            <div className="flex gap-2 flex-wrap">
+              {[500, 1000, 2000, 5000].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => { setAmount(String(v)); setError(""); }}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-[hsl(var(--border))] text-slate-500 dark:text-[hsl(var(--muted-foreground))] hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                >
+                  ${v.toLocaleString()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Note */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-600 dark:text-[hsl(var(--muted-foreground))]">备注（可选）</label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="如：客户预付款、追加预算等"
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--secondary))] text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-400 dark:focus:border-emerald-500 transition-colors placeholder:text-slate-300 dark:placeholder:text-white/20"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-5 pb-5">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-[hsl(var(--border))] text-sm font-medium text-slate-600 dark:text-[hsl(var(--muted-foreground))] hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+          >
+            取消
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={saving || !amount}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
+            确认充值
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function ProjectBoardPage() {
   const { id } = useParams<{ id: string }>();
   const { currentUser } = useRole();
@@ -370,10 +515,11 @@ export default function ProjectBoardPage() {
   const [input, setInput] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("chat");
   const [showReport, setShowReport] = useState(false);
+  const [showRecharge, setShowRecharge] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const proj = MOCK_PROJECTS.find((p) => p.id === id) ?? null;
+    const proj = getProjects().find((p) => p.id === id) ?? null;
     setProject(proj);
     setMessages(getMessages(id));
     setTasks(getTasks(id));
@@ -416,6 +562,11 @@ export default function ProjectBoardPage() {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)));
   };
 
+  const handleRechargeSuccess = (updatedProject: Project) => {
+    setProject(updatedProject);
+    setShowRecharge(false);
+  };
+
   if (!project) {
     return (
       <div className="flex items-center justify-center h-64 text-sm text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
@@ -452,17 +603,28 @@ export default function ProjectBoardPage() {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
+          <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))] flex-wrap">
             <div>商务：<span className="text-blue-600 dark:text-blue-400">{project.businessName}</span></div>
             <div>优化师：<span className="text-green-600 dark:text-green-400">{project.optimizerName}</span></div>
-            <div>创建于 {formatDate(project.createdAt)}</div>
-            <button
-              onClick={() => setShowReport(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-[hsl(var(--primary))] transition-all shadow-sm"
-            >
-              <FileText size={12} />
-              生成报告
-            </button>
+            <div className="hidden sm:block">创建于 {formatDate(project.createdAt)}</div>
+            <div className="flex items-center gap-2">
+              {currentUser.role === "BUSINESS" && (
+                <button
+                  onClick={() => setShowRecharge(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-sm"
+                >
+                  <CreditCard size={12} />
+                  充值
+                </button>
+              )}
+              <button
+                onClick={() => setShowReport(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-[hsl(var(--primary))] transition-all shadow-sm"
+              >
+                <FileText size={12} />
+                生成报告
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -555,40 +717,85 @@ export default function ProjectBoardPage() {
             </div>
 
             {/* Campaign data */}
-            {(project.budgetActual !== undefined || project.roiActual !== undefined) && (
-              <div className="rounded-2xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--card))] p-4 shadow-sm">
-                <h3 className="text-xs font-semibold uppercase tracking-wider mb-3 text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
+            <div className="rounded-2xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--card))] p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
                   投放数据摘要
                 </h3>
-                <div className="space-y-2.5">
-                  {project.budgetActual !== undefined && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">累计花费</span>
-                      <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(project.budgetActual)}</span>
+                {currentUser.role === "BUSINESS" && (
+                  <button
+                    onClick={() => setShowRecharge(true)}
+                    className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-500/5 transition-colors"
+                  >
+                    <Plus size={9} />
+                    充值
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2.5">
+                {project.totalRecharge !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">累计充值</span>
+                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(project.totalRecharge)}</span>
+                  </div>
+                )}
+                {project.budgetActual !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">累计消耗</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(project.budgetActual)}</span>
+                  </div>
+                )}
+                {project.dailySpend !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">当日消耗</span>
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(project.dailySpend)}</span>
+                  </div>
+                )}
+                {project.roiActual !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">实际 ROI</span>
+                    <div className="flex items-center gap-1">
+                      <span className={cn("text-sm font-semibold", project.roiActual >= 1 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400")}>
+                        {project.roiActual.toFixed(2)}
+                      </span>
+                      <TrendingUp size={13} className={project.roiActual >= 1 ? "text-green-500" : "text-red-400"} />
                     </div>
-                  )}
-                  {project.roiActual !== undefined && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">实际 ROI</span>
-                      <div className="flex items-center gap-1">
-                        <span className={cn("text-sm font-semibold", project.roiActual >= 1 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400")}>
-                          {project.roiActual.toFixed(2)}
-                        </span>
-                        <TrendingUp size={13} className="text-green-500" />
-                      </div>
-                    </div>
-                  )}
-                  {project.mediaPlatform && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">媒体平台</span>
-                      <span className="text-xs px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-[hsl(var(--secondary))] text-slate-600 dark:text-[hsl(var(--foreground))]">
-                        {project.mediaPlatform}
+                  </div>
+                )}
+                {project.totalRecharge !== undefined && project.budgetActual !== undefined && (
+                  <div className="pt-2 border-t border-slate-100 dark:border-[hsl(var(--border))]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">余额</span>
+                      <span className={cn(
+                        "text-sm font-bold",
+                        project.totalRecharge - project.budgetActual >= 0
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-red-500 dark:text-red-400"
+                      )}>
+                        {formatCurrency(Math.max(0, project.totalRecharge - project.budgetActual))}
                       </span>
                     </div>
-                  )}
-                </div>
+                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-indigo-500 transition-all"
+                        style={{ width: `${Math.min(100, (project.budgetActual / project.totalRecharge) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-[10px] text-slate-400 dark:text-[hsl(var(--muted-foreground))]">已消耗 {Math.round((project.budgetActual / project.totalRecharge) * 100)}%</span>
+                    </div>
+                  </div>
+                )}
+                {project.mediaPlatform && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">媒体平台</span>
+                    <span className="text-xs px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-[hsl(var(--secondary))] text-slate-600 dark:text-[hsl(var(--foreground))]">
+                      {project.mediaPlatform}
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
@@ -598,6 +805,17 @@ export default function ProjectBoardPage() {
       {/* AI Report Modal */}
       <AnimatePresence>
         {showReport && <AIReportModal project={project} onClose={() => setShowReport(false)} />}
+      </AnimatePresence>
+
+      {/* Recharge Modal */}
+      <AnimatePresence>
+        {showRecharge && (
+          <RechargeModal
+            project={project}
+            onClose={() => setShowRecharge(false)}
+            onSuccess={handleRechargeSuccess}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

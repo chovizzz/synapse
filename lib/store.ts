@@ -1,5 +1,5 @@
-import { Requirement, Message, Task, KnowledgeCase, FollowUp, AppNotification, User, Client } from "@/types";
-import { MOCK_REQUIREMENTS, MOCK_MESSAGES, MOCK_TASKS, MOCK_KNOWLEDGE_CASES, MOCK_NOTIFICATIONS, MOCK_USERS, MOCK_CLIENTS } from "./mock-data";
+import { Requirement, Message, Task, KnowledgeCase, FollowUp, AppNotification, User, Client, Project, RechargeRecord } from "@/types";
+import { MOCK_REQUIREMENTS, MOCK_MESSAGES, MOCK_TASKS, MOCK_KNOWLEDGE_CASES, MOCK_NOTIFICATIONS, MOCK_USERS, MOCK_CLIENTS, MOCK_PROJECTS } from "./mock-data";
 
 function getFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -23,6 +23,30 @@ export function getStoredUsers(): User[] {
 
 export function saveStoredUsers(users: User[]): void {
   saveToStorage("synapse_users", users);
+}
+
+// ── Projects ──────────────────────────────────────────────────────────────────
+export function getProjects(): Project[] {
+  return getFromStorage("synapse_projects", MOCK_PROJECTS);
+}
+
+export function saveProjects(projects: Project[]): void {
+  saveToStorage("synapse_projects", projects);
+}
+
+export function updateProject(updated: Project): void {
+  const all = getProjects();
+  saveProjects(all.map((p) => (p.id === updated.id ? updated : p)));
+}
+
+// ── RechargeRecords ───────────────────────────────────────────────────────────
+export function getRechargeRecords(): RechargeRecord[] {
+  return getFromStorage<RechargeRecord[]>("synapse_recharge_records", []);
+}
+
+export function addRechargeRecord(record: RechargeRecord): void {
+  const all = getRechargeRecords();
+  saveToStorage("synapse_recharge_records", [record, ...all]);
 }
 
 // ── Clients ───────────────────────────────────────────────────────────────────

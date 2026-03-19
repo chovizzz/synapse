@@ -96,8 +96,22 @@ export interface Project {
   businessName: string;
   optimizerName: string;
   status: ProjectStatus;
-  budgetActual?: number;
-  roiActual?: number;
+  budgetActual?: number;   // 累计消耗（USD）
+  roiActual?: number;      // 实际 ROI
+  totalRecharge?: number;  // 累计充值（USD）
+  dailySpend?: number;     // 当日消耗（USD）
+  dailyRecharge?: number;  // 当日充值（USD）
+  updatedAt?: string;
+  createdAt: string;
+}
+
+// 充值流水
+export interface RechargeRecord {
+  id: string;
+  projectId: string;
+  projectName: string;
+  amount: number;
+  note?: string;
   createdAt: string;
 }
 
