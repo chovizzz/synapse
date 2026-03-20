@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, ChevronRight, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 import { StepIndicator } from "@/components/requirements/StepIndicator";
 import { ParseAnimation } from "@/components/requirements/ParseAnimation";
 import { useRole } from "@/lib/role-context";
-import { getRequirements, saveRequirements, getClients, getStoredUsers } from "@/lib/store";
+import { getRequirements, saveRequirements, getClients, getStoredUsers, getKnowledgeCases } from "@/lib/store";
 import { generateId } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { StructuredRequirement, Requirement, Client, User } from "@/types";
@@ -45,8 +45,25 @@ const NUMBER_FIELDS: Array<keyof Omit<StructuredRequirement, "ambiguous_fields">
   "target_roi",
 ];
 
+/** 根据知识库案例生成可作「客户原话」的参考文案，供 AI 解析 */
+function buildRawInputFromCase(
+  title: string,
+  industry: string,
+  region: string,
+  mediaPlatform: string,
+  budgetRange: string,
+  targetKpi: string,
+  targetRoi: number | undefined,
+  strategySummary: string
+): string {
+  const roiPart = targetRoi != null ? `，目标 ${targetKpi} 要到 ${targetRoi}` : `，目标 KPI 为 ${targetKpi}`;
+  const budget = budgetRange.replace(/\/天$/, "").trim() || budgetRange;
+  return `【参考案例】《${title}》\n客户想做 ${industry} 行业，投放地区 ${region}，媒体平台 ${mediaPlatform}，预算约 ${budget} 美金/天${roiPart}。\n策略要点：${strategySummary.slice(0, 280)}${strategySummary.length > 280 ? "…" : ""}`;
+}
+
 export default function NewRequirementPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentUser } = useRole();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -66,6 +83,26 @@ export default function NewRequirementPage() {
   const [rawInput, setRawInput] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
   const [customClient, setCustomClient] = useState("");
+
+  // 从「参考此案例」带过来的案例 ID：预填客户原话
+  useEffect(() => {
+    const refCaseId = searchParams.get("refCase");
+    if (!refCaseId || rawInput) return;
+    const cases = getKnowledgeCases();
+    const refCase = cases.find((k) => k.id === refCaseId);
+    if (!refCase) return;
+    const filled = buildRawInputFromCase(
+      refCase.title,
+      refCase.industry,
+      refCase.region,
+      refCase.mediaPlatform,
+      refCase.budgetRange,
+      refCase.targetKpi,
+      refCase.targetRoi,
+      refCase.strategySummary
+    );
+    setRawInput(filled);
+  }, [searchParams, rawInput]);
 
   // Step 2
   const [isParsing, setIsParsing] = useState(false);
