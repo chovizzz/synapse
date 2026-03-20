@@ -6,6 +6,7 @@ import { getKnowledgeCases } from "@/lib/store";
 import { CaseCard } from "@/components/knowledge/CaseCard";
 import { CaseFilter } from "@/components/knowledge/CaseFilter";
 import { CaseDetail } from "@/components/knowledge/CaseDetail";
+import { ShareCaseModal } from "@/components/knowledge/ShareCaseModal";
 import type { KnowledgeCase } from "@/types";
 
 function toast(msg: string) {
@@ -30,13 +31,15 @@ function toast(msg: string) {
 }
 
 export default function KnowledgePage() {
-  const allCases = useMemo(() => getKnowledgeCases(), []);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const allCases = useMemo(() => getKnowledgeCases(), [refreshKey]);
 
   const [selectedIndustry, setSelectedIndustry] = useState("");
   const [selectedMedia, setSelectedMedia] = useState("");
   const [selectedRegion, setSelectedRegion] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCase, setActiveCase] = useState<KnowledgeCase | null>(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return allCases.filter((c) => {
@@ -69,7 +72,7 @@ export default function KnowledgePage() {
           </p>
         </div>
         <button
-          onClick={() => toast("功能开发中")}
+          onClick={() => setShareModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-95"
           style={{
             backgroundColor: "hsl(var(--primary))",
@@ -159,6 +162,17 @@ export default function KnowledgePage() {
 
       {/* Detail modal */}
       <CaseDetail case={activeCase} onClose={() => setActiveCase(null)} />
+
+      {/* Share new case modal */}
+      <ShareCaseModal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        onSuccess={() => {
+          setRefreshKey((k) => k + 1);
+          toast("案例已添加");
+        }}
+        existingCases={allCases}
+      />
     </div>
   );
 }

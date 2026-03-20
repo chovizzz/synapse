@@ -89,6 +89,15 @@ export function getKnowledgeCases(): KnowledgeCase[] {
   return getFromStorage("synapse_knowledge", MOCK_KNOWLEDGE_CASES);
 }
 
+export function saveKnowledgeCases(cases: KnowledgeCase[]): void {
+  saveToStorage("synapse_knowledge", cases);
+}
+
+export function addKnowledgeCase(record: KnowledgeCase): void {
+  const all = getKnowledgeCases();
+  saveKnowledgeCases([record, ...all]);
+}
+
 // ── Follow-ups (追问) ─────────────────────────────────────────────────────────
 export function getFollowUps(requirementId: string): FollowUp[] {
   const all = getFromStorage<FollowUp[]>("synapse_followups", []);
