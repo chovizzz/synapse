@@ -154,7 +154,10 @@ export type NotificationType =
   | "EVAL_DONE"
   | "FOLLOW_UP"
   | "ACCEPTED"
-  | "REJECTED";
+  | "REJECTED"
+  | "SUBMITTED"
+  | "RECHARGE"
+  | "KNOWLEDGE";
 
 export interface AppNotification {
   id: string;

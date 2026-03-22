@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import type { Project, Message, Task, RechargeRecord } from "@/types";
 import { generateAccountData } from "@/lib/account-data";
-import { getMessages, addMessage, getTasks, getProjects, updateProject, addRechargeRecord } from "@/lib/store";
+import { getMessages, addMessage, getTasks, getProjects, updateProject, addRechargeRecord, pushLocalNotification } from "@/lib/store";
 import { useRole } from "@/lib/role-context";
 import { generateId, formatCurrency, formatDate } from "@/lib/utils";
 import { SpendRoiChart } from "@/components/charts/SpendRoiChart";
@@ -400,6 +400,12 @@ function RechargeModal({
     };
     updateProject(updated);
     setSaving(false);
+    pushLocalNotification({
+      type: "RECHARGE",
+      title: "项目充值已记录",
+      body: `${project.clientName} +$${num.toLocaleString()}${note.trim() ? ` · ${note.trim().slice(0, 40)}` : ""}`,
+      link: `/projects/${project.id}`,
+    });
     onSuccess(updated);
   };
 

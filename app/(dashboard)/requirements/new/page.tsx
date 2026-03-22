@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { StepIndicator } from "@/components/requirements/StepIndicator";
 import { ParseAnimation } from "@/components/requirements/ParseAnimation";
 import { useRole } from "@/lib/role-context";
-import { getRequirements, saveRequirements, getClients, getStoredUsers, getKnowledgeCases } from "@/lib/store";
+import { getRequirements, saveRequirements, getClients, getStoredUsers, getKnowledgeCases, pushLocalNotification } from "@/lib/store";
 import { generateId } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { StructuredRequirement, Requirement, Client, User } from "@/types";
@@ -179,6 +179,13 @@ export default function NewRequirementPage() {
     const existing = getRequirements();
     saveRequirements([newReq, ...existing]);
 
+    pushLocalNotification({
+      type: "NEW_REQUIREMENT",
+      title: "需求草稿已创建",
+      body: `${clientName} · 已进入草稿预审，可查看 AI 评估`,
+      link: `/requirements/${newId}`,
+    });
+
     // 异步触发 AI 评估，不阻塞跳转
     fetch("/api/ai/evaluate", {
       method: "POST",
@@ -193,6 +200,12 @@ export default function NewRequirementPage() {
             r.id === newId ? { ...r, aiEvaluation: json.data } : r
           );
           saveRequirements(updated);
+          pushLocalNotification({
+            type: "EVAL_DONE",
+            title: "AI 评估已完成",
+            body: `${clientName} 的需求评估已生成，请查看成功率与风险`,
+            link: `/requirements/${newId}`,
+          });
         }
       })
       .catch(() => {/* 静默失败 */});

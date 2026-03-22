@@ -3,8 +3,9 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Loader2, Eye, EyeOff, Zap } from "lucide-react";
+import { Loader2, Eye, EyeOff, Zap, Database } from "lucide-react";
 import Link from "next/link";
+import { seedDemoDataToLocalStorage } from "@/lib/demo-seed";
 
 function LoginForm() {
   const router = useRouter();
@@ -162,6 +163,28 @@ function LoginForm() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Demo: reset local data */}
+        <div className="rounded-2xl border border-amber-200/80 dark:border-amber-500/25 bg-amber-50/80 dark:bg-amber-500/5 p-4 space-y-2">
+          <p className="text-xs font-semibold text-amber-900 dark:text-amber-200/90 uppercase tracking-wider">
+            比赛 / 演示
+          </p>
+          <p className="text-xs text-amber-800/90 dark:text-amber-100/70 leading-relaxed">
+            若列表为空或数据乱了，可一键恢复内置示例（用户、需求、项目、经验库、通知等），不影响已注册到服务器的账号。
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (!confirm("将清空本机 Synapse 相关本地数据并写入完整演示数据，确定继续？")) return;
+              seedDemoDataToLocalStorage();
+              alert("已写入演示数据，请刷新页面或重新登录后查看。");
+            }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-amber-950 dark:text-amber-100 bg-amber-200/90 dark:bg-amber-500/20 hover:bg-amber-200 dark:hover:bg-amber-500/30 transition-colors border border-amber-300/60 dark:border-amber-500/30"
+          >
+            <Database size={16} />
+            重置为演示数据
+          </button>
         </div>
       </div>
     </div>

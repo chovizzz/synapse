@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { evaluateRequirement } from "@/lib/gemini";
 import type { StructuredRequirement, AIChatMessage } from "@/types";
+import { fallbackEvaluation, isDemoSafeMode } from "@/lib/demo-ai-fallback";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,11 +18,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = await evaluateRequirement(
-      structuredData as unknown as Record<string, unknown>,
-      chatHistory
-    );
-    return NextResponse.json({ success: true, data });
+    try {
+      const data = await evaluateRequirement(
+        structuredData as unknown as Record<string, unknown>,
+        chatHistory
+      );
+      return NextResponse.json({ success: true, data });
+    } catch (aiErr) {
+      console.error("[/api/ai/evaluate] model error", aiErr);
+      if (isDemoSafeMode()) {
+        return NextResponse.json({
+          success: true,
+          data: fallbackEvaluation(),
+          _demoFallback: true,
+        });
+      }
+      throw aiErr;
+    }
   } catch (err) {
     console.error("[/api/ai/evaluate]", err);
     return NextResponse.json(

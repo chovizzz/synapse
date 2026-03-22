@@ -7,6 +7,7 @@ import { useRole } from "@/lib/role-context";
 import { getRequirements, getProjects } from "@/lib/store";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RequirementCard } from "@/components/dashboard/RequirementCard";
+import { DemoTourBanner } from "@/components/dashboard/DemoTourBanner";
 import type { Requirement, Project, ProjectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -230,6 +231,8 @@ function BusinessDashboard() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <DemoTourBanner />
+
       {/* Finance Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatsCard
@@ -345,6 +348,8 @@ function OptimizerDashboard({ optimizerName }: { optimizerName: string }) {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <DemoTourBanner />
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatsCard

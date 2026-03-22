@@ -8,6 +8,7 @@ import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  SYNAPSE_NOTIFICATIONS_EVENT,
 } from "@/lib/store";
 import type { AppNotification } from "@/types";
 
@@ -27,6 +28,9 @@ const TYPE_ICON: Record<AppNotification["type"], string> = {
   FOLLOW_UP: "💬",
   ACCEPTED: "✅",
   REJECTED: "❌",
+  SUBMITTED: "📤",
+  RECHARGE: "💳",
+  KNOWLEDGE: "📚",
 };
 
 interface Props {
@@ -41,6 +45,14 @@ export default function NotificationPanel({ open, onClose }: Props) {
 
   useEffect(() => {
     if (open) setNotifications(getNotifications());
+  }, [open]);
+
+  useEffect(() => {
+    const sync = () => {
+      if (open) setNotifications(getNotifications());
+    };
+    window.addEventListener(SYNAPSE_NOTIFICATIONS_EVENT, sync);
+    return () => window.removeEventListener(SYNAPSE_NOTIFICATIONS_EVENT, sync);
   }, [open]);
 
   // Close on outside click
@@ -75,16 +87,6 @@ export default function NotificationPanel({ open, onClose }: Props) {
 
   return (
     <>
-      {/* Badge on bell */}
-      {unreadCount > 0 && (
-        <span
-          className="absolute top-1 right-1 w-4 h-4 rounded-full text-[10px] font-bold text-white flex items-center justify-center pointer-events-none"
-          style={{ backgroundColor: "hsl(var(--primary))" }}
-        >
-          {unreadCount > 9 ? "9+" : unreadCount}
-        </span>
-      )}
-
       <AnimatePresence>
         {open && (
           <motion.div

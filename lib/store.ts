@@ -1,5 +1,14 @@
-import { Requirement, Message, Task, KnowledgeCase, FollowUp, AppNotification, User, Client, Project, RechargeRecord } from "@/types";
+import { Requirement, Message, Task, KnowledgeCase, FollowUp, AppNotification, User, Client, Project, RechargeRecord, NotificationType } from "@/types";
 import { MOCK_REQUIREMENTS, MOCK_MESSAGES, MOCK_TASKS, MOCK_KNOWLEDGE_CASES, MOCK_NOTIFICATIONS, MOCK_USERS, MOCK_CLIENTS, MOCK_PROJECTS } from "./mock-data";
+import { generateId } from "@/lib/utils";
+
+export const SYNAPSE_NOTIFICATIONS_EVENT = "synapse-notifications-updated";
+
+function emitNotificationsUpdated(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(SYNAPSE_NOTIFICATIONS_EVENT));
+  }
+}
 
 function getFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -120,6 +129,7 @@ export function markNotificationRead(id: string): void {
     "synapse_notifications",
     all.map((n) => (n.id === id ? { ...n, read: true } : n))
   );
+  emitNotificationsUpdated();
 }
 
 export function markAllNotificationsRead(): void {
@@ -128,9 +138,30 @@ export function markAllNotificationsRead(): void {
     "synapse_notifications",
     all.map((n) => ({ ...n, read: true }))
   );
+  emitNotificationsUpdated();
 }
 
 export function addNotification(notification: AppNotification): void {
   const all = getNotifications();
   saveToStorage("synapse_notifications", [notification, ...all]);
+  emitNotificationsUpdated();
+}
+
+/** 便捷：生成 id / 时间戳并写入通知（Demo 用） */
+export function pushLocalNotification(params: {
+  type: NotificationType;
+  title: string;
+  body: string;
+  link?: string;
+  read?: boolean;
+}): void {
+  addNotification({
+    id: `n-${generateId()}`,
+    type: params.type,
+    title: params.title,
+    body: params.body,
+    link: params.link,
+    read: params.read ?? false,
+    createdAt: new Date().toISOString(),
+  });
 }

@@ -3,8 +3,9 @@
 import { usePathname } from "next/navigation";
 import { Bell, Menu, LogOut } from "lucide-react";
 import { useRole } from "@/lib/role-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NotificationPanel from "@/components/layout/NotificationPanel";
+import { getNotifications, SYNAPSE_NOTIFICATIONS_EVENT } from "@/lib/store";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,14 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
   const pathname = usePathname();
   const { currentUser, logout } = useRole();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const sync = () => setUnreadCount(getNotifications().filter((n) => !n.read).length);
+    sync();
+    window.addEventListener(SYNAPSE_NOTIFICATIONS_EVENT, sync);
+    return () => window.removeEventListener(SYNAPSE_NOTIFICATIONS_EVENT, sync);
+  }, []);
 
   const title = Object.entries(PAGE_TITLES).find(([path]) =>
     path === "/" ? pathname === "/" : pathname.startsWith(path)
@@ -67,8 +76,17 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
           <button
             onClick={() => setNotifOpen((v) => !v)}
             className="relative p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5"
+            aria-label="通知"
           >
             <Bell size={18} className="text-slate-400 dark:text-[hsl(var(--muted-foreground))]" />
+            {unreadCount > 0 && (
+              <span
+                className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 rounded-full text-[10px] font-bold text-white flex items-center justify-center pointer-events-none"
+                style={{ backgroundColor: "hsl(var(--primary))" }}
+              >
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </button>
           <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
         </div>

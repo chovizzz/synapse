@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ChevronRight, ChevronDown, ChevronUp, Check, CheckCircle2, Loader2,
-  Send, MessageSquare, X, Bot, Info, BarChart2, History
+  Send, MessageSquare, X, Bot, Info, BarChart2, History, Copy,
 } from "lucide-react";
-import type { Requirement, AIEvaluation, FollowUp, User } from "@/types";
-import { getRequirements, saveRequirements, getFollowUps, addFollowUp, getStoredUsers } from "@/lib/store";
+import type { Requirement, AIEvaluation, FollowUp, User, KnowledgeCase } from "@/types";
+import { getRequirements, saveRequirements, getFollowUps, addFollowUp, getStoredUsers, getClients, getKnowledgeCases, pushLocalNotification } from "@/lib/store";
+import { pickSimilarKnowledgeCases } from "@/lib/similar-knowledge";
+import { buildRequirementMarkdown } from "@/lib/requirement-markdown";
+import { SimilarKnowledgeCases } from "@/components/knowledge/SimilarKnowledgeCases";
+import { CaseDetail } from "@/components/knowledge/CaseDetail";
 import { useRole } from "@/lib/role-context";
 import { formatDate, generateId, cn } from "@/lib/utils";
 import { EvaluationCard } from "@/components/evaluation/EvaluationCard";
@@ -218,6 +222,12 @@ export default function RequirementDetailPage() {
   const [chatMessages, setChatMessages] = useState<import("@/types").AIChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [isReEvaluating, setIsReEvaluating] = useState(false);
+  const [previewKnowledgeCase, setPreviewKnowledgeCase] = useState<KnowledgeCase | null>(null);
+
+  const similarCases = useMemo(() => {
+    if (!requirement) return [];
+    return pickSimilarKnowledgeCases(requirement, getClients(), getKnowledgeCases(), 3);
+  }, [requirement]);
 
   const updateRequirement = useCallback((updated: Requirement) => {
     const all = getRequirements();
@@ -305,6 +315,12 @@ export default function RequirementDetailPage() {
       assignedOptimizerName: optimizer?.name,
       updatedAt: new Date().toISOString(),
     });
+    pushLocalNotification({
+      type: "SUBMITTED",
+      title: "需求已提交给优化师",
+      body: `${requirement.clientName} → ${optimizer?.name ?? "优化师"}，请评估`,
+      link: `/requirements/${requirement.id}`,
+    });
     setToast("已提交给优化师，等待响应");
     setIsSubmittingToOptimizer(false);
   };
@@ -312,6 +328,12 @@ export default function RequirementDetailPage() {
   const handleAccept = () => {
     if (!requirement) return;
     updateRequirement({ ...requirement, status: "ACCEPTED", updatedAt: new Date().toISOString() });
+    pushLocalNotification({
+      type: "ACCEPTED",
+      title: "需求已接单",
+      body: `${requirement.clientName} 的需求已被接单`,
+      link: `/requirements/${requirement.id}`,
+    });
     router.push("/projects/p1");
   };
 
@@ -322,6 +344,12 @@ export default function RequirementDetailPage() {
       status: "REJECTED",
       rejectionReason: rejectReason || "无",
       updatedAt: new Date().toISOString(),
+    });
+    pushLocalNotification({
+      type: "REJECTED",
+      title: "需求已拒绝",
+      body: `${requirement.clientName}：${(rejectReason || "无").slice(0, 80)}`,
+      link: `/requirements/${requirement.id}`,
     });
     setRejectMode(false);
     setRejectReason("");
@@ -342,6 +370,25 @@ export default function RequirementDetailPage() {
     addFollowUp(fu);
     setFollowUps((prev) => [...prev, fu]);
     setFollowUpInput("");
+    if (requirement) {
+      pushLocalNotification({
+        type: "FOLLOW_UP",
+        title: "需求有新追问",
+        body: `${currentUser.name}：${content.slice(0, 60)}${content.length > 60 ? "…" : ""}`,
+        link: `/requirements/${requirement.id}`,
+      });
+    }
+  };
+
+  const handleCopyRequirementMarkdown = async () => {
+    if (!requirement) return;
+    const md = buildRequirementMarkdown(requirement);
+    try {
+      await navigator.clipboard.writeText(md);
+      setToast("已复制 Markdown 摘要到剪贴板");
+    } catch {
+      setToast("复制失败，请手动选择文本");
+    }
   };
 
   if (!requirement) {
@@ -417,7 +464,15 @@ export default function RequirementDetailPage() {
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => void handleCopyRequirementMarkdown()}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all border border-slate-200 dark:border-[hsl(var(--border))] text-slate-500 dark:text-[hsl(var(--muted-foreground))] hover:border-indigo-300 dark:hover:border-[hsl(var(--primary)/0.5)] hover:text-indigo-600 dark:hover:text-[hsl(var(--primary))]"
+              >
+                <Copy size={14} />
+                <span className="hidden sm:inline">复制摘要</span>
+              </button>
               {/* Follow-up drawer trigger */}
               <button
                 onClick={() => setDrawerOpen(true)}
@@ -634,6 +689,11 @@ export default function RequirementDetailPage() {
                   ))}
                 </div>
               </div>
+
+              <SimilarKnowledgeCases
+                cases={similarCases}
+                onOpenCase={(c) => setPreviewKnowledgeCase(c)}
+              />
             </div>
           </div>
         )}
@@ -831,6 +891,8 @@ export default function RequirementDetailPage() {
           )
         )}
       </div>
+
+      <CaseDetail case={previewKnowledgeCase} onClose={() => setPreviewKnowledgeCase(null)} />
 
       {/* CommDrawer */}
       <CommDrawer

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseRequirement } from "@/lib/gemini";
+import { fallbackStructuredFromRaw, isDemoSafeMode } from "@/lib/demo-ai-fallback";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,8 +14,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = await parseRequirement(rawInput.trim());
-    return NextResponse.json({ success: true, data });
+    const trimmed = rawInput.trim();
+    try {
+      const data = await parseRequirement(trimmed);
+      return NextResponse.json({ success: true, data });
+    } catch (aiErr) {
+      console.error("[/api/ai/parse] model error", aiErr);
+      if (isDemoSafeMode()) {
+        return NextResponse.json({
+          success: true,
+          data: fallbackStructuredFromRaw(trimmed),
+          _demoFallback: true,
+        });
+      }
+      throw aiErr;
+    }
   } catch (err) {
     console.error("[/api/ai/parse]", err);
     return NextResponse.json(
