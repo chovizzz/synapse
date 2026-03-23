@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, ChevronRight, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -61,7 +61,7 @@ function buildRawInputFromCase(
   return `【参考案例】《${title}》\n客户想做 ${industry} 行业，投放地区 ${region}，媒体平台 ${mediaPlatform}，预算约 ${budget} 美金/天${roiPart}。\n策略要点：${strategySummary.slice(0, 280)}${strategySummary.length > 280 ? "…" : ""}`;
 }
 
-export default function NewRequirementPage() {
+function NewRequirementPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useRole();
@@ -513,5 +513,20 @@ export default function NewRequirementPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function NewRequirementPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-3xl mx-auto flex items-center justify-center py-24 text-sm text-[hsl(var(--muted-foreground))]">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+          加载中…
+        </div>
+      }
+    >
+      <NewRequirementPageInner />
+    </Suspense>
   );
 }
