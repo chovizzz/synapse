@@ -5,9 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ChevronRight, ChevronDown, ChevronUp, Check, CheckCircle2, Loader2,
-  Send, MessageSquare, X, Bot, Info, BarChart2, History, Copy,
+  Send, MessageSquare, X, Bot, Info, BarChart2, History, Copy, Tag, AlertCircle,
 } from "lucide-react";
-import type { Requirement, AIEvaluation, FollowUp, User, KnowledgeCase } from "@/types";
+import type { Requirement, AIEvaluation, FollowUp, User, KnowledgeCase, RequirementPriority } from "@/types";
+import { derivePriority } from "@/lib/priority";
 import { getRequirements, saveRequirements, getFollowUps, addFollowUp, getStoredUsers, getClients, getKnowledgeCases, pushLocalNotification } from "@/lib/store";
 import { pickSimilarKnowledgeCases } from "@/lib/similar-knowledge";
 import { buildRequirementMarkdown } from "@/lib/requirement-markdown";
@@ -27,6 +28,75 @@ const STATUS_CONFIG = {
   REJECTED: { label: "已拒绝", tw: "bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400" },
   COMPLETED: { label: "已完成", tw: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400" },
 };
+
+const PRIORITY_CONFIG: Record<RequirementPriority, { label: string; tw: string }> = {
+  HIGH: { label: "高优先级", tw: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20" },
+  MEDIUM: { label: "中优先级", tw: "bg-yellow-50 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-500/20" },
+  LOW: { label: "低优先级", tw: "bg-slate-100 text-slate-500 dark:bg-slate-500/10 dark:text-slate-400 border border-slate-200 dark:border-slate-500/20" },
+};
+
+const PRESET_TAGS = ["大客户", "KA", "高预算", "低预算", "素材欠缺", "数据不全", "紧急", "需追问", "代投", "自投"];
+
+function TagManager({
+  tags,
+  onChange,
+}: {
+  tags: string[];
+  onChange: (tags: string[]) => void;
+}) {
+  const [inputVal, setInputVal] = useState("");
+
+  const toggle = (tag: string) => {
+    if (tags.includes(tag)) onChange(tags.filter((t) => t !== tag));
+    else onChange([...tags, tag]);
+  };
+
+  const addCustom = () => {
+    const t = inputVal.trim();
+    if (!t || tags.includes(t)) { setInputVal(""); return; }
+    onChange([...tags, t]);
+    setInputVal("");
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        {PRESET_TAGS.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            onClick={() => toggle(tag)}
+            className={cn(
+              "text-[11px] px-2 py-1 rounded-full font-medium transition-all border",
+              tags.includes(tag)
+                ? "bg-indigo-600 dark:bg-[hsl(var(--primary))] text-white border-transparent"
+                : "border-slate-200 dark:border-[hsl(var(--border))] text-slate-500 dark:text-[hsl(var(--muted-foreground))] hover:border-indigo-300"
+            )}
+          >
+            {tag}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustom())}
+          placeholder="自定义标签…"
+          className="flex-1 text-xs px-3 py-1.5 rounded-lg outline-none border border-slate-200 dark:border-[hsl(var(--border))] bg-slate-50 dark:bg-[hsl(var(--secondary))] text-slate-800 dark:text-[hsl(var(--foreground))] focus:border-indigo-400 transition-colors"
+        />
+        <button
+          type="button"
+          onClick={addCustom}
+          disabled={!inputVal.trim()}
+          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 disabled:opacity-40 transition-colors"
+        >
+          添加
+        </button>
+      </div>
+    </div>
+  );
+}
 
 type Tab = "info" | "evaluation" | "followup" | "aichat";
 
@@ -224,6 +294,10 @@ export default function RequirementDetailPage() {
   const [isReEvaluating, setIsReEvaluating] = useState(false);
   const [previewKnowledgeCase, setPreviewKnowledgeCase] = useState<KnowledgeCase | null>(null);
 
+  // 标签编辑
+  const [tagsEditMode, setTagsEditMode] = useState(false);
+  const [pendingTags, setPendingTags] = useState<string[]>([]);
+
   const similarCases = useMemo(() => {
     if (!requirement) return [];
     return pickSimilarKnowledgeCases(requirement, getClients(), getKnowledgeCases(), 3);
@@ -338,21 +412,42 @@ export default function RequirementDetailPage() {
   };
 
   const handleRejectConfirm = () => {
-    if (!requirement) return;
+    if (!requirement || !rejectReason.trim()) {
+      setToast("请填写拒绝原因");
+      return;
+    }
     updateRequirement({
       ...requirement,
       status: "REJECTED",
-      rejectionReason: rejectReason || "无",
+      rejectionReason: rejectReason.trim(),
       updatedAt: new Date().toISOString(),
     });
     pushLocalNotification({
       type: "REJECTED",
       title: "需求已拒绝",
-      body: `${requirement.clientName}：${(rejectReason || "无").slice(0, 80)}`,
+      body: `${requirement.clientName}：${rejectReason.trim().slice(0, 80)}`,
       link: `/requirements/${requirement.id}`,
     });
     setRejectMode(false);
     setRejectReason("");
+  };
+
+  const handleSaveTags = () => {
+    if (!requirement) return;
+    const priority = derivePriority(requirement.aiEvaluation?.success_rate);
+    updateRequirement({
+      ...requirement,
+      tags: pendingTags,
+      priority,
+      updatedAt: new Date().toISOString(),
+    });
+    setTagsEditMode(false);
+    setToast("标签已保存");
+  };
+
+  const openTagsEdit = () => {
+    setPendingTags(requirement?.tags ?? []);
+    setTagsEditMode(true);
   };
 
   const handleSendFollowUp = () => {
@@ -405,6 +500,8 @@ export default function RequirementDetailPage() {
   const isOptimizer = currentUser.role === "OPTIMIZER";
   const isBusiness = currentUser.role === "BUSINESS";
   const isDraft = requirement.status === "DRAFT";
+  const reqPriority = requirement.priority ?? derivePriority(requirement.aiEvaluation?.success_rate);
+  const priorityCfg = PRIORITY_CONFIG[reqPriority];
 
   const timelineEvents = isDraft
     ? [
@@ -462,7 +559,23 @@ export default function RequirementDetailPage() {
                 <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold", statusCfg.tw)}>
                   {statusCfg.label}
                 </span>
+                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold", priorityCfg.tw)}>
+                  {priorityCfg.label}
+                </span>
               </div>
+              {/* Tags */}
+              {requirement.tags && requirement.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {requirement.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <button
@@ -472,6 +585,24 @@ export default function RequirementDetailPage() {
               >
                 <Copy size={14} />
                 <span className="hidden sm:inline">复制摘要</span>
+              </button>
+              <button
+                type="button"
+                onClick={openTagsEdit}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all border",
+                  requirement.tags && requirement.tags.length > 0
+                    ? "border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10"
+                    : "border-slate-200 dark:border-[hsl(var(--border))] text-slate-500 dark:text-[hsl(var(--muted-foreground))] hover:border-indigo-300 hover:text-indigo-600"
+                )}
+              >
+                <Tag size={14} />
+                <span className="hidden sm:inline">标签</span>
+                {requirement.tags && requirement.tags.length > 0 && (
+                  <span className="text-[10px] px-1.5 rounded-full font-bold bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">
+                    {requirement.tags.length}
+                  </span>
+                )}
               </button>
               {/* Follow-up drawer trigger */}
               <button
@@ -755,20 +886,30 @@ export default function RequirementDetailPage() {
             {/* Optimizer actions */}
             {isOptimizer && !isDraft && (
               <div className="rounded-2xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--card))] p-5 shadow-sm space-y-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-[hsl(var(--muted-foreground))]">操作</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-[hsl(var(--muted-foreground))]">负责人审批</h3>
+                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold", priorityCfg.tw)}>
+                    {priorityCfg.label}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
+                  评估需求可行性后，选择接单或说明拒绝原因。拒绝时需填写原因以便商务改善。
+                </p>
                 <div className="flex gap-2">
                   <button
                     onClick={handleAccept}
-                    disabled={requirement.status === "ACCEPTED" || requirement.status === "REJECTED"}
-                    className="flex-1 py-2 rounded-xl text-sm font-semibold text-white transition-all bg-indigo-600 hover:bg-indigo-700 dark:bg-[hsl(var(--primary))] dark:hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={requirement.status === "ACCEPTED" || requirement.status === "REJECTED" || requirement.status === "IN_PROGRESS"}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all bg-indigo-600 hover:bg-indigo-700 dark:bg-[hsl(var(--primary))] dark:hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                   >
+                    <CheckCircle2 size={14} />
                     接单
                   </button>
                   <button
                     onClick={() => setRejectMode((v) => !v)}
-                    disabled={requirement.status === "ACCEPTED" || requirement.status === "REJECTED"}
-                    className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all border border-red-300 dark:border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={requirement.status === "ACCEPTED" || requirement.status === "REJECTED" || requirement.status === "IN_PROGRESS"}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border border-red-300 dark:border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                   >
+                    <X size={14} />
                     拒绝
                   </button>
                 </div>
@@ -782,23 +923,28 @@ export default function RequirementDetailPage() {
                       style={{ overflow: "hidden" }}
                     >
                       <div className="pt-2 space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs text-red-500 dark:text-red-400 mb-1">
+                          <AlertCircle size={12} />
+                          请填写拒绝原因（必填），便于商务优化需求材料
+                        </div>
                         <textarea
                           value={rejectReason}
                           onChange={(e) => setRejectReason(e.target.value)}
-                          placeholder="请填写拒绝原因（选填）"
+                          placeholder="例如：预算不足以支撑北美获客成本，建议日预算至少$1000+；或素材缺失，无法评估创意质量…"
                           rows={3}
-                          className="w-full rounded-xl px-3 py-2 text-sm resize-none outline-none border border-slate-200 dark:border-[hsl(var(--border))] bg-slate-50 dark:bg-[hsl(var(--secondary))] text-slate-800 dark:text-[hsl(var(--foreground))] focus:border-red-400 transition-colors"
+                          className="w-full rounded-xl px-3 py-2 text-sm resize-none outline-none border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/5 text-slate-800 dark:text-[hsl(var(--foreground))] focus:border-red-400 transition-colors placeholder:text-slate-400"
                         />
                         <div className="flex gap-2">
                           <button
                             onClick={handleRejectConfirm}
-                            className="flex-1 py-1.5 rounded-xl text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-all"
+                            disabled={!rejectReason.trim()}
+                            className="flex-1 py-2 rounded-xl text-xs font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                           >
                             确认拒绝
                           </button>
                           <button
                             onClick={() => { setRejectMode(false); setRejectReason(""); }}
-                            className="flex-1 py-1.5 rounded-xl text-xs font-medium bg-slate-100 dark:bg-[hsl(var(--secondary))] text-slate-500 dark:text-[hsl(var(--muted-foreground))] hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
+                            className="flex-1 py-2 rounded-xl text-xs font-medium bg-slate-100 dark:bg-[hsl(var(--secondary))] text-slate-500 dark:text-[hsl(var(--muted-foreground))] hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
                           >
                             取消
                           </button>
@@ -809,8 +955,12 @@ export default function RequirementDetailPage() {
                 </AnimatePresence>
 
                 {requirement.status === "REJECTED" && requirement.rejectionReason && (
-                  <div className="rounded-xl p-3 text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20">
-                    已拒绝：{requirement.rejectionReason}
+                  <div className="rounded-xl p-3 text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 space-y-1">
+                    <div className="font-semibold flex items-center gap-1.5">
+                      <AlertCircle size={12} />
+                      拒绝原因
+                    </div>
+                    <div>{requirement.rejectionReason}</div>
                   </div>
                 )}
               </div>
@@ -893,6 +1043,57 @@ export default function RequirementDetailPage() {
       </div>
 
       <CaseDetail case={previewKnowledgeCase} onClose={() => setPreviewKnowledgeCase(null)} />
+
+      {/* Tags edit modal */}
+      <AnimatePresence>
+        {tagsEditMode && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setTagsEditMode(false)}
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="fixed inset-x-4 sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 top-1/2 -translate-y-1/2 z-50 w-full sm:w-[480px] bg-white dark:bg-[hsl(var(--card))] rounded-2xl shadow-2xl border border-slate-200 dark:border-[hsl(var(--border))] p-6 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Tag size={16} className="text-indigo-500" />
+                  <h3 className="font-semibold text-slate-900 dark:text-white text-sm">工单标签</h3>
+                </div>
+                <button onClick={() => setTagsEditMode(false)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                  <X size={15} className="text-slate-400" />
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
+                为工单打上标签，便于分类和优先级排列。点击预设标签切换，或输入自定义标签。
+              </p>
+              <TagManager tags={pendingTags} onChange={setPendingTags} />
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleSaveTags}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-[hsl(var(--primary))] transition-all"
+                >
+                  保存标签
+                </button>
+                <button
+                  onClick={() => setTagsEditMode(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-slate-100 dark:bg-[hsl(var(--secondary))] text-slate-500 dark:text-[hsl(var(--muted-foreground))] hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
+                >
+                  取消
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* CommDrawer */}
       <CommDrawer

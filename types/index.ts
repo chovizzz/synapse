@@ -68,6 +68,9 @@ export interface Client {
   ownerId: string;
 }
 
+// 需求优先级（由 AI 评分自动推导，也可手动覆盖）
+export type RequirementPriority = "HIGH" | "MEDIUM" | "LOW";
+
 // 需求单
 export interface Requirement {
   id: string;
@@ -81,6 +84,8 @@ export interface Requirement {
   structuredData?: StructuredRequirement;
   aiEvaluation?: AIEvaluation;
   status: RequirementStatus;
+  priority?: RequirementPriority;  // AI 推导或手动设置的优先级
+  tags?: string[];                  // 工单标签（如"大客户""KA""预算不足"）
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;

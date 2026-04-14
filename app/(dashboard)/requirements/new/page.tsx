@@ -45,6 +45,29 @@ const NUMBER_FIELDS: Array<keyof Omit<StructuredRequirement, "ambiguous_fields">
   "target_roi",
 ];
 
+// 下拉字段配置
+const SELECT_FIELDS: Partial<Record<keyof Omit<StructuredRequirement, "ambiguous_fields">, string[]>> = {
+  attribution_model: ["代投", "自投", "混合"],
+  media_platform: [
+    "Facebook & Instagram",
+    "Google Ads",
+    "TikTok",
+    "YouTube",
+    "Twitter/X",
+    "Snapchat",
+    "Pinterest",
+    "Apple Search Ads",
+    "其他",
+  ],
+  region: [
+    "北美", "欧洲", "东南亚", "日韩", "中东", "拉美", "大洋洲", "全球", "其他",
+  ],
+  campaign_objective: [
+    "用户获取", "品牌曝光", "应用安装", "电商转化", "表单收集", "其他",
+  ],
+  third_party_tracking: ["Adjust", "AppsFlyer", "Branch", "Kochava", "无", "其他"],
+};
+
 /** 根据知识库案例生成可作「客户原话」的参考文案，供 AI 解析 */
 function buildRawInputFromCase(
   title: string,
@@ -425,35 +448,51 @@ function NewRequirementPageInner() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(Object.keys(FIELD_LABELS) as Array<keyof typeof FIELD_LABELS>).map((key) => {
                   const isNum = NUMBER_FIELDS.includes(key);
+                  const selectOpts = SELECT_FIELDS[key];
                   const rawVal = editableData[key];
                   const displayVal = rawVal != null ? String(rawVal) : "";
+
+                  const inputClass = cn(
+                    "w-full rounded-lg border border-[hsl(var(--border))]",
+                    "bg-[hsl(var(--background))] text-[hsl(var(--foreground))]",
+                    "px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                  );
+
+                  const handleChange = (v: string) => {
+                    setEditableData((prev) =>
+                      prev
+                        ? { ...prev, [key]: isNum ? (v === "" ? null : Number(v)) : v }
+                        : prev
+                    );
+                  };
+
                   return (
                     <div key={key} className="space-y-1">
                       <label className="text-xs text-[hsl(var(--muted-foreground))]">
                         {FIELD_LABELS[key]}
                       </label>
-                      <input
-                        type={isNum ? "number" : "text"}
-                        value={displayVal}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setEditableData((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  [key]: isNum
-                                    ? v === "" ? null : Number(v)
-                                    : v,
-                                }
-                              : prev
-                          );
-                        }}
-                        className={cn(
-                          "w-full rounded-lg border border-[hsl(var(--border))]",
-                          "bg-[hsl(var(--background))] text-[hsl(var(--foreground))]",
-                          "px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                        )}
-                      />
+                      {selectOpts ? (
+                        <select
+                          value={displayVal}
+                          onChange={(e) => handleChange(e.target.value)}
+                          className={inputClass}
+                        >
+                          <option value="">请选择…</option>
+                          {selectOpts.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                          {displayVal && !selectOpts.includes(displayVal) && (
+                            <option value={displayVal}>{displayVal}（AI 解析）</option>
+                          )}
+                        </select>
+                      ) : (
+                        <input
+                          type={isNum ? "number" : "text"}
+                          value={displayVal}
+                          onChange={(e) => handleChange(e.target.value)}
+                          className={inputClass}
+                        />
+                      )}
                     </div>
                   );
                 })}
