@@ -2,21 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
 
+const REQ_INCLUDE = {
+  client: true,
+  creator: { select: { id: true, name: true, role: true } },
+  assignedOptimizer: { select: { id: true, name: true, role: true } },
+  followUps: { orderBy: { createdAt: "asc" as const } },
+};
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const req = await prisma.requirement.findUnique({
-    where: { id },
-    include: {
-      client: true,
-      creator: { select: { id: true, name: true, role: true } },
-      assignedOptimizer: { select: { id: true, name: true, role: true } },
-      followUps: { orderBy: { createdAt: "asc" } },
-    },
-  });
-
+  const req = await prisma.requirement.findUnique({ where: { id }, include: REQ_INCLUDE });
   if (!req) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(req);
 }
@@ -39,13 +37,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(body.assignedOptimizerId !== undefined && { assignedOptimizerId: body.assignedOptimizerId }),
       ...(body.rejectionReason !== undefined && { rejectionReason: body.rejectionReason }),
     },
-    include: {
-      client: true,
-      creator: { select: { id: true, name: true, role: true } },
-      assignedOptimizer: { select: { id: true, name: true, role: true } },
-      followUps: { orderBy: { createdAt: "asc" } },
-    },
+    include: REQ_INCLUDE,
   });
+
+  // 接单时自动创建对应 Project（幂等：先查再建）
+  if (body.status === "ACCEPTED") {
+    const existing = await prisma.project.findFirst({ where: { requirementId: id } });
+    if (!existing) {
+      const sd = updated.structuredData as Record<string, unknown> | null;
+      const optimizer = updated.assignedOptimizerId
+        ? await prisma.user.findUnique({ where: { id: updated.assignedOptimizerId }, select: { name: true } })
+        : await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true } });
+      const creator = await prisma.user.findUnique({
+        where: { id: updated.creatorId },
+        select: { name: true },
+      });
+      await prisma.project.create({
+        data: {
+          requirementId: id,
+          clientName: updated.client.name,
+          industry: updated.client.industry,
+          mediaPlatform: (sd?.media_platform as string) || "Unknown",
+          businessName: creator?.name || "商务",
+          optimizerName: optimizer?.name || "优化师",
+          status: "STRATEGY",
+        },
+      });
+    }
+  }
 
   return NextResponse.json(updated);
 }

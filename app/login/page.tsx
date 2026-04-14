@@ -3,9 +3,8 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Loader2, Eye, EyeOff, Zap, Database } from "lucide-react";
+import { Loader2, Eye, EyeOff, Zap } from "lucide-react";
 import Link from "next/link";
-import { seedDemoDataToLocalStorage } from "@/lib/demo-seed";
 
 function LoginForm() {
   const router = useRouter();
@@ -50,8 +49,11 @@ function LoginForm() {
   }
 
   const DEMO_ACCOUNTS = [
-    { label: "商务小谢", email: "wang@synapse.demo", role: "商务", color: "blue" as const },
-    { label: "优化师小郑", email: "li@synapse.demo", role: "优化师", color: "green" as const },
+    { label: "商务小谢", email: "xie@synapse.demo", role: "商务", color: "blue" as const },
+    { label: "商务小张", email: "zhang@synapse.demo", role: "商务", color: "blue" as const },
+    { label: "优化师小郑", email: "zheng@synapse.demo", role: "优化师", color: "green" as const },
+    { label: "优化师小陈", email: "chen@synapse.demo", role: "优化师", color: "green" as const },
+    { label: "管理员", email: "admin@synapse.demo", role: "管理员", color: "purple" as const },
   ];
 
   return (
@@ -96,7 +98,7 @@ function LoginForm() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="任意密码（演示模式）"
+                  placeholder="demo1234"
                   className="w-full rounded-xl px-3 py-2.5 pr-10 text-sm outline-none transition-all border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--secondary))] text-slate-900 dark:text-[hsl(var(--foreground))] placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-indigo-500 dark:focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-indigo-100 dark:focus:ring-[hsl(var(--primary)/0.1)]"
                 />
                 <button
@@ -136,13 +138,13 @@ function LoginForm() {
         {/* Demo accounts */}
         <div className="rounded-2xl border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--card))] p-4 space-y-3 shadow-sm">
           <p className="text-xs font-semibold text-slate-400 dark:text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
-            演示账号（密码随意）
+            演示账号（统一密码 demo1234）
           </p>
           <div className="space-y-2">
             {DEMO_ACCOUNTS.map((acc) => (
               <button
                 key={acc.email}
-                onClick={() => setEmail(acc.email)}
+                onClick={() => { setEmail(acc.email); setPassword("demo1234"); }}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/5 border border-slate-100 dark:border-[hsl(var(--border))]"
               >
                 <div>
@@ -155,7 +157,9 @@ function LoginForm() {
                   className={
                     acc.color === "blue"
                       ? "text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400"
-                      : "text-[10px] px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400"
+                      : acc.color === "green"
+                      ? "text-[10px] px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400"
+                      : "text-[10px] px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400"
                   }
                 >
                   {acc.role}
@@ -165,27 +169,10 @@ function LoginForm() {
           </div>
         </div>
 
-        {/* Demo: reset local data */}
-        <div className="rounded-2xl border border-amber-200/80 dark:border-amber-500/25 bg-amber-50/80 dark:bg-amber-500/5 p-4 space-y-2">
-          <p className="text-xs font-semibold text-amber-900 dark:text-amber-200/90 uppercase tracking-wider">
-            比赛 / 演示
-          </p>
-          <p className="text-xs text-amber-800/90 dark:text-amber-100/70 leading-relaxed">
-            若列表为空或数据乱了，可一键恢复内置示例（用户、需求、项目、经验库、通知等），不影响已注册到服务器的账号。
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              if (!confirm("将清空本机 Synapse 相关本地数据并写入完整演示数据，确定继续？")) return;
-              seedDemoDataToLocalStorage();
-              alert("已写入演示数据，请刷新页面或重新登录后查看。");
-            }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-amber-950 dark:text-amber-100 bg-amber-200/90 dark:bg-amber-500/20 hover:bg-amber-200 dark:hover:bg-amber-500/30 transition-colors border border-amber-300/60 dark:border-amber-500/30"
-          >
-            <Database size={16} />
-            重置为演示数据
-          </button>
-        </div>
+        {/* Tips */}
+        <p className="text-center text-xs text-slate-400 dark:text-[hsl(var(--muted-foreground))]">
+          数据实时存储于云端数据库 · 多角色协作可分别登录体验
+        </p>
       </div>
     </div>
   );

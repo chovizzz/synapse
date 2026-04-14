@@ -146,10 +146,14 @@ describe("RiskBadge", () => {
 
 const baseRequirement: Requirement = {
   id: "req-001",
+  clientId: "c1",
   clientName: "测试客户",
+  creatorId: "u1",
+  creatorName: "测试商务",
   rawInput: "我要投放",
   status: "PENDING",
   createdAt: "2024-06-01T10:00:00Z",
+  updatedAt: "2024-06-01T10:00:00Z",
   structuredData: {
     region: "North America",
     media_platform: "Meta",
@@ -205,10 +209,11 @@ describe("RequirementCard", () => {
       ...baseRequirement,
       aiEvaluation: {
         success_rate: 82,
-        risk_level: "medium",
-        suggestions: [],
+        confidence: "medium",
         risks: [],
-        similar_cases: [],
+        strategy_suggestions: ["建议1", "建议2", "建议3"],
+        estimated_timeline: "30天",
+        similar_case_hint: "",
       },
     };
     render(<RequirementCard requirement={req} showScore />);
@@ -220,10 +225,11 @@ describe("RequirementCard", () => {
       ...baseRequirement,
       aiEvaluation: {
         success_rate: 82,
-        risk_level: "medium",
-        suggestions: [],
+        confidence: "medium",
         risks: [],
-        similar_cases: [],
+        strategy_suggestions: ["建议1", "建议2", "建议3"],
+        estimated_timeline: "30天",
+        similar_case_hint: "",
       },
     };
     render(<RequirementCard requirement={req} showScore={false} />);
@@ -247,28 +253,32 @@ const mockCases: KnowledgeCase[] = [
   {
     id: "case-1",
     title: "Meta 美区手游",
-    summary: "Meta投放",
     industry: "游戏",
     mediaPlatform: "Meta",
     region: "北美",
-    roi: 1.8,
-    spend: 50000,
+    budgetRange: "1万-5万",
+    targetKpi: "ROI",
+    actualRoi: 1.8,
+    strategySummary: "Meta投放策略",
+    keyInsights: [],
     tags: [],
+    isHighlight: false,
     createdAt: "2024-01-01",
-    content: "",
   },
   {
     id: "case-2",
     title: "TikTok 东南亚",
-    summary: "TikTok投放",
     industry: "电商",
     mediaPlatform: "TikTok",
     region: "东南亚",
-    roi: 2.1,
-    spend: 30000,
+    budgetRange: "1万-5万",
+    targetKpi: "ROI",
+    actualRoi: 2.1,
+    strategySummary: "TikTok投放策略",
+    keyInsights: [],
     tags: [],
+    isHighlight: false,
     createdAt: "2024-02-01",
-    content: "",
   },
 ];
 

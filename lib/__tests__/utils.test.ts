@@ -16,8 +16,8 @@ describe("formatCurrency", () => {
 });
 
 describe("formatDate", () => {
-  it("accepts a Date object and returns a non-empty string", () => {
-    const result = formatDate(new Date("2024-06-01T10:00:00"));
+  it("accepts an ISO date string from a Date object", () => {
+    const result = formatDate(new Date("2024-06-01T10:00:00").toISOString());
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
   });
