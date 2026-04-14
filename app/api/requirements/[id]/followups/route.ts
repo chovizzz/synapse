@@ -27,7 +27,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       requirementId: id,
       fromId: session.user.id,
       fromName: session.user.name ?? "",
-      fromRole: (session.user.role as string) as import("@prisma/client").UserRole,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fromRole: session.user.role as any,
       content: body.content,
     },
   });
