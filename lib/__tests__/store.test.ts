@@ -1,7 +1,19 @@
-import { describe, it, expect, beforeEach } from "vitest";
+/**
+ * store.test.ts
+ *
+ * lib/store.ts 已迁移为 REST API 调用层。
+ * 这里用 vi.fn() mock 全局 fetch，验证每个 store 函数：
+ *   1. 调用了正确的 URL 和 HTTP method
+ *   2. 正确解析并返回响应体
+ *   3. 在请求失败时向上抛出错误
+ */
+
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   getRequirements,
-  saveRequirements,
+  getRequirement,
+  updateRequirement,
+  createRequirement,
   getMessages,
   addMessage,
   getFollowUps,
@@ -9,156 +21,329 @@ import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-  addNotification,
+  getKnowledgeCases,
+  addKnowledgeCase,
+  getProjects,
+  updateProject,
+  addRechargeRecord,
 } from "@/lib/store";
-import type { Message, FollowUp, AppNotification } from "@/types";
+import type { Requirement, Message, FollowUp, AppNotification, KnowledgeCase, Project } from "@/types";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function mockFetch(body: unknown, status = 200) {
+  return vi.fn().mockResolvedValue({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  } as Response);
+}
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  localStorage.clear();
+  vi.restoreAllMocks();
 });
 
 // ── Requirements ──────────────────────────────────────────────────────────────
 
 describe("getRequirements", () => {
-  it("returns mock defaults when localStorage is empty", () => {
-    const reqs = getRequirements();
-    expect(Array.isArray(reqs)).toBe(true);
-    expect(reqs.length).toBeGreaterThan(0);
+  it("GET /api/requirements and returns array", async () => {
+    const data = [{ id: "r1" }, { id: "r2" }];
+    vi.stubGlobal("fetch", mockFetch(data));
+
+    const result = await getRequirements();
+
+    expect(fetch).toHaveBeenCalledWith("/api/requirements", expect.any(Object));
+    expect(result).toEqual(data);
   });
 
-  it("returns saved data after saveRequirements", () => {
-    const original = getRequirements();
-    const first = original[0];
-    saveRequirements([first]);
-    const loaded = getRequirements();
-    expect(loaded).toHaveLength(1);
-    expect(loaded[0].id).toBe(first.id);
+  it("throws when response is not ok", async () => {
+    vi.stubGlobal("fetch", mockFetch({ error: "Unauthorized" }, 401));
+    await expect(getRequirements()).rejects.toThrow("API error 401");
+  });
+});
+
+describe("getRequirement", () => {
+  it("GET /api/requirements/:id", async () => {
+    const data = { id: "r1", rawInput: "test" };
+    vi.stubGlobal("fetch", mockFetch(data));
+
+    const result = await getRequirement("r1");
+
+    expect(fetch).toHaveBeenCalledWith("/api/requirements/r1", expect.any(Object));
+    expect(result).toEqual(data);
+  });
+});
+
+describe("updateRequirement", () => {
+  it("PATCH /api/requirements/:id with correct body", async () => {
+    const updated = { id: "r1", status: "ACCEPTED" };
+    vi.stubGlobal("fetch", mockFetch(updated));
+
+    const result = await updateRequirement("r1", { status: "ACCEPTED" });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/requirements/r1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ status: "ACCEPTED" }),
+      })
+    );
+    expect(result).toEqual(updated);
+  });
+});
+
+describe("createRequirement", () => {
+  it("POST /api/requirements and returns created item", async () => {
+    const created = { id: "r-new", status: "DRAFT" };
+    vi.stubGlobal("fetch", mockFetch(created, 201));
+
+    const payload = { clientId: "c1", rawInput: "test input", structuredData: {} };
+    const result = await createRequirement(payload as Partial<Requirement> as any);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/requirements",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
+    );
+    expect(result).toEqual(created);
   });
 });
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 
-describe("getMessages / addMessage", () => {
-  const makeMessage = (projectId: string, id: string): Message => ({
-    id,
-    projectId,
-    senderId: "user-1",
-    senderName: "Test User",
-    senderRole: "BUSINESS",
-    content: "Hello",
-    type: "TEXT",
-    createdAt: new Date().toISOString(),
-  });
+describe("getMessages", () => {
+  it("GET /api/projects/:id/messages", async () => {
+    const msgs = [{ id: "m1", projectId: "p1" }];
+    vi.stubGlobal("fetch", mockFetch(msgs));
 
-  it("returns empty array for unknown projectId when no data saved", () => {
-    // clear so mock defaults don't interfere — seed with empty array
-    localStorage.setItem("synapse_messages", JSON.stringify([]));
-    const msgs = getMessages("nonexistent-project");
-    expect(msgs).toHaveLength(0);
-  });
+    const result = await getMessages("p1");
 
-  it("filters messages by projectId", () => {
-    localStorage.setItem("synapse_messages", JSON.stringify([]));
-    const msgA = makeMessage("project-a", "msg-1");
-    const msgB = makeMessage("project-b", "msg-2");
-    addMessage(msgA);
-    addMessage(msgB);
-
-    expect(getMessages("project-a")).toHaveLength(1);
-    expect(getMessages("project-a")[0].id).toBe("msg-1");
-    expect(getMessages("project-b")).toHaveLength(1);
-  });
-
-  it("accumulates multiple messages for the same project", () => {
-    localStorage.setItem("synapse_messages", JSON.stringify([]));
-    addMessage(makeMessage("project-a", "msg-1"));
-    addMessage(makeMessage("project-a", "msg-2"));
-    expect(getMessages("project-a")).toHaveLength(2);
+    expect(fetch).toHaveBeenCalledWith("/api/projects/p1/messages", expect.any(Object));
+    expect(result).toEqual(msgs);
   });
 });
 
-// ── Follow-ups ─────────────────────────────────────────────────────────────────
+describe("addMessage", () => {
+  it("POST /api/projects/:id/messages", async () => {
+    const created = { id: "m-new", projectId: "p1", content: "hello" };
+    vi.stubGlobal("fetch", mockFetch(created, 201));
 
-describe("getFollowUps / addFollowUp", () => {
-  const makeFollowUp = (requirementId: string, id: string): FollowUp => ({
-    id,
-    requirementId,
-    fromId: "user-1",
-    fromName: "小王",
-    fromRole: "BUSINESS",
-    content: "追问内容",
-    createdAt: new Date().toISOString(),
+    const msg: Pick<Message, "projectId" | "content" | "type"> = {
+      projectId: "p1",
+      content: "hello",
+      type: "TEXT",
+    };
+    const result = await addMessage(msg);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/p1/messages",
+      expect.objectContaining({ method: "POST" })
+    );
+    expect(result).toEqual(created);
   });
+});
 
-  it("returns empty array when no follow-ups stored", () => {
-    expect(getFollowUps("req-x")).toHaveLength(0);
+// ── Follow-ups ────────────────────────────────────────────────────────────────
+
+describe("getFollowUps", () => {
+  it("GET /api/requirements/:id/followups", async () => {
+    const fups = [{ id: "f1", requirementId: "r1" }];
+    vi.stubGlobal("fetch", mockFetch(fups));
+
+    const result = await getFollowUps("r1");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/requirements/r1/followups",
+      expect.any(Object)
+    );
+    expect(result).toEqual(fups);
   });
+});
 
-  it("filters follow-ups by requirementId", () => {
-    addFollowUp(makeFollowUp("req-1", "fu-1"));
-    addFollowUp(makeFollowUp("req-2", "fu-2"));
+describe("addFollowUp", () => {
+  it("POST /api/requirements/:id/followups", async () => {
+    const created = { id: "f-new", requirementId: "r1", content: "追问内容" };
+    vi.stubGlobal("fetch", mockFetch(created, 201));
 
-    const req1 = getFollowUps("req-1");
-    expect(req1).toHaveLength(1);
-    expect(req1[0].id).toBe("fu-1");
+    const fu: FollowUp = {
+      id: "f-new",
+      requirementId: "r1",
+      fromId: "u1",
+      fromName: "小王",
+      fromRole: "BUSINESS",
+      content: "追问内容",
+      createdAt: new Date().toISOString(),
+    };
+    const result = await addFollowUp(fu);
 
-    const req2 = getFollowUps("req-2");
-    expect(req2).toHaveLength(1);
-    expect(req2[0].id).toBe("fu-2");
-  });
-
-  it("accumulates multiple follow-ups for the same requirement", () => {
-    addFollowUp(makeFollowUp("req-1", "fu-1"));
-    addFollowUp(makeFollowUp("req-1", "fu-2"));
-    expect(getFollowUps("req-1")).toHaveLength(2);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/requirements/r1/followups",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ content: "追问内容" }),
+      })
+    );
+    expect(result).toEqual(created);
   });
 });
 
 // ── Notifications ─────────────────────────────────────────────────────────────
 
-describe("notifications", () => {
-  const makeNotification = (id: string, read = false): AppNotification => ({
-    id,
-    type: "NEW_REQUIREMENT",
-    title: "新需求",
-    body: "有一条新需求",
-    read,
-    createdAt: new Date().toISOString(),
+describe("getNotifications", () => {
+  it("GET /api/notifications", async () => {
+    const notifs = [{ id: "n1", read: false }];
+    vi.stubGlobal("fetch", mockFetch(notifs));
+
+    const result = await getNotifications();
+
+    expect(fetch).toHaveBeenCalledWith("/api/notifications", expect.any(Object));
+    expect(result).toEqual(notifs);
+  });
+});
+
+describe("markNotificationRead", () => {
+  it("POST /api/notifications/:id/read then fetches updated list", async () => {
+    const notif: AppNotification = {
+      id: "n1", type: "NEW_REQUIREMENT", title: "test",
+      body: "body", read: false, createdAt: new Date().toISOString(),
+    };
+    // First call: POST /read, second call: GET /notifications
+    vi.stubGlobal("fetch", vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) } as Response)
+    );
+
+    await markNotificationRead("n1");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/notifications/n1/read",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+});
+
+describe("markAllNotificationsRead", () => {
+  it("reads unread notifications then marks each one", async () => {
+    const notifs: AppNotification[] = [
+      { id: "n1", type: "NEW_REQUIREMENT", title: "t", body: "b", read: false, createdAt: new Date().toISOString() },
+      { id: "n2", type: "EVAL_DONE", title: "t", body: "b", read: true, createdAt: new Date().toISOString() },
+      { id: "n3", type: "FOLLOW_UP", title: "t", body: "b", read: false, createdAt: new Date().toISOString() },
+    ];
+
+    // First call: GET /notifications; subsequent calls: POST /read for unread ones
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(notifs) } as Response)
+      .mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) } as Response)
+    );
+
+    await markAllNotificationsRead();
+
+    const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0] as string);
+    expect(calls).toContain("/api/notifications");
+    expect(calls).toContain("/api/notifications/n1/read");
+    expect(calls).toContain("/api/notifications/n3/read");
+    // n2 is already read — should NOT be called
+    expect(calls).not.toContain("/api/notifications/n2/read");
+  });
+});
+
+// ── Knowledge ─────────────────────────────────────────────────────────────────
+
+describe("getKnowledgeCases", () => {
+  it("GET /api/knowledge", async () => {
+    const cases = [{ id: "k1", title: "手游北美" }];
+    vi.stubGlobal("fetch", mockFetch(cases));
+
+    const result = await getKnowledgeCases();
+
+    expect(fetch).toHaveBeenCalledWith("/api/knowledge", expect.any(Object));
+    expect(result).toEqual(cases);
+  });
+});
+
+describe("addKnowledgeCase", () => {
+  it("POST /api/knowledge and returns created item", async () => {
+    const created = { id: "k-new", title: "新案例" };
+    vi.stubGlobal("fetch", mockFetch(created, 201));
+
+    const payload = {
+      title: "新案例", industry: "手游", mediaPlatform: "Facebook",
+      region: "北美", budgetRange: "$500/天", targetKpi: "ROI",
+      strategySummary: "测试策略", keyInsights: ["insight1"],
+      tags: ["手游"], isHighlight: false,
+    } as Omit<KnowledgeCase, "id" | "createdAt">;
+
+    const result = await addKnowledgeCase(payload);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/knowledge",
+      expect.objectContaining({ method: "POST" })
+    );
+    expect(result).toEqual(created);
+  });
+});
+
+// ── Projects ──────────────────────────────────────────────────────────────────
+
+describe("getProjects", () => {
+  it("GET /api/projects", async () => {
+    const projects = [{ id: "p1", clientName: "星辰游戏" }];
+    vi.stubGlobal("fetch", mockFetch(projects));
+
+    const result = await getProjects();
+
+    expect(fetch).toHaveBeenCalledWith("/api/projects", expect.any(Object));
+    expect(result).toEqual(projects);
+  });
+});
+
+describe("updateProject", () => {
+  it("PATCH /api/projects/:id", async () => {
+    const updated = { id: "p1", status: "COMPLETED" };
+    vi.stubGlobal("fetch", mockFetch(updated));
+
+    const result = await updateProject({ id: "p1", status: "COMPLETED" } as Partial<Project> & { id: string });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/p1",
+      expect.objectContaining({ method: "PATCH" })
+    );
+    expect(result).toEqual(updated);
+  });
+});
+
+describe("addRechargeRecord", () => {
+  it("POST /api/projects/:id/recharge with amount and note", async () => {
+    const response = { record: { id: "rec-1", amount: 500 }, project: { id: "p1" } };
+    vi.stubGlobal("fetch", mockFetch(response, 201));
+
+    const result = await addRechargeRecord("p1", 500, "测试充值");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/p1/recharge",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ amount: 500, note: "测试充值" }),
+      })
+    );
+    expect(result).toEqual(response);
+  });
+});
+
+// ── Error handling ────────────────────────────────────────────────────────────
+
+describe("error handling", () => {
+  it("throws with status code when API returns non-2xx", async () => {
+    vi.stubGlobal("fetch", mockFetch({ error: "Not Found" }, 404));
+    await expect(getRequirement("bad-id")).rejects.toThrow("API error 404");
   });
 
-  it("returns mock defaults when localStorage is empty", () => {
-    const notifs = getNotifications();
-    expect(Array.isArray(notifs)).toBe(true);
-  });
-
-  it("addNotification prepends to list", () => {
-    localStorage.setItem("synapse_notifications", JSON.stringify([]));
-    addNotification(makeNotification("n-1"));
-    addNotification(makeNotification("n-2"));
-    const all = getNotifications();
-    expect(all[0].id).toBe("n-2");
-    expect(all[1].id).toBe("n-1");
-  });
-
-  it("markNotificationRead only marks the target", () => {
-    localStorage.setItem("synapse_notifications", JSON.stringify([
-      makeNotification("n-1", false),
-      makeNotification("n-2", false),
-    ]));
-    markNotificationRead("n-1");
-    const all = getNotifications();
-    expect(all.find((n) => n.id === "n-1")?.read).toBe(true);
-    expect(all.find((n) => n.id === "n-2")?.read).toBe(false);
-  });
-
-  it("markAllNotificationsRead marks every notification", () => {
-    localStorage.setItem("synapse_notifications", JSON.stringify([
-      makeNotification("n-1", false),
-      makeNotification("n-2", false),
-      makeNotification("n-3", false),
-    ]));
-    markAllNotificationsRead();
-    const all = getNotifications();
-    expect(all.every((n) => n.read)).toBe(true);
+  it("propagates network errors", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network failure")));
+    await expect(getProjects()).rejects.toThrow("Network failure");
   });
 });
