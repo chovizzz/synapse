@@ -1,9 +1,13 @@
 import { PrismaClient, UserRole, RequirementStatus, RequirementPriority, ProjectStatus, NotificationType } from "@prisma/client";
+import { neon } from "@neondatabase/serverless";
+import { PrismaNeon } from "@prisma/adapter-neon";
 import { hashSync } from "bcryptjs";
 
-// Seed uses standard pg driver via connection string in prisma.config.ts
+const connectionString = process.env.POSTGRES_PRISMA_URL ?? process.env.DATABASE_URL ?? "";
+const sql = neon(connectionString);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const prisma = new PrismaClient({ datasources: { db: { url: process.env.POSTGRES_PRISMA_URL ?? process.env.DATABASE_URL } } } as any);
+const adapter = new PrismaNeon(sql as any);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("🌱 Seeding database...");
