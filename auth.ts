@@ -1,11 +1,13 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/db";
 import { compareSync } from "bcryptjs";
 
+/**
+ * auth() is used both in middleware (Edge) and in API routes (Node.js).
+ * We keep the authorize callback lazy so Prisma is only imported in
+ * Node.js context (API routes / server components), never in Edge middleware.
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   providers: [
     Credentials({
       credentials: {
@@ -14,6 +16,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        // Dynamic import keeps Prisma/Neon out of the Edge bundle used by middleware
+        const { prisma } = await import("@/lib/db");
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
