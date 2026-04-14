@@ -9,11 +9,8 @@ import {
 } from "lucide-react";
 import type { Requirement, AIEvaluation, FollowUp, User, KnowledgeCase, RequirementPriority } from "@/types";
 import { derivePriority } from "@/lib/priority";
-import { getRequirements, saveRequirements, getFollowUps, addFollowUp, getStoredUsers, getClients, getKnowledgeCases, pushLocalNotification } from "@/lib/store";
-import { pickSimilarKnowledgeCases } from "@/lib/similar-knowledge";
+import { getRequirements, updateRequirement, getFollowUps, addFollowUp, getStoredUsers } from "@/lib/store";
 import { buildRequirementMarkdown } from "@/lib/requirement-markdown";
-import { SimilarKnowledgeCases } from "@/components/knowledge/SimilarKnowledgeCases";
-import { CaseDetail } from "@/components/knowledge/CaseDetail";
 import { useRole } from "@/lib/role-context";
 import { formatDate, generateId, cn } from "@/lib/utils";
 import { EvaluationCard } from "@/components/evaluation/EvaluationCard";
@@ -300,27 +297,28 @@ export default function RequirementDetailPage() {
 
   const similarCases = useMemo(() => {
     if (!requirement) return [];
-    return pickSimilarKnowledgeCases(requirement, getClients(), getKnowledgeCases(), 3);
+    return [];
   }, [requirement]);
 
-  const updateRequirement = useCallback((updated: Requirement) => {
-    const all = getRequirements();
-    const next = all.map((r) => (r.id === updated.id ? updated : r));
-    saveRequirements(next);
-    setRequirement(updated);
+  const doUpdateRequirement = useCallback((updated: Requirement) => {
+    updateRequirement(updated.id, updated).then(setRequirement);
   }, []);
 
   useEffect(() => {
-    const reqs = getRequirements();
-    const req = reqs.find((r) => r.id === id) ?? null;
-    setRequirement(req);
-    if (req?.aiEvaluation) setEvaluation(req.aiEvaluation);
-    setFollowUps(getFollowUps(id));
-    // 加载优化师列表供商务选择
-    const allUsers = getStoredUsers();
-    const opts = allUsers.filter((u) => u.role === "OPTIMIZER");
-    setOptimizers(opts);
-    if (opts.length > 0) setSelectedOptimizerId(opts[0].id);
+    Promise.all([
+      getRequirements(),
+      getFollowUps(id),
+      getStoredUsers(),
+    ]).then(([reqs, fups, allUsers]) => {
+      const req = reqs.find((r) => r.id === id) ?? null;
+      setRequirement(req);
+      if (req?.aiEvaluation) setEvaluation(req.aiEvaluation);
+      setFollowUps(fups);
+      // 加载优化师列表供商务选择
+      const opts = allUsers.filter((u) => u.role === "OPTIMIZER");
+      setOptimizers(opts);
+      if (opts.length > 0) setSelectedOptimizerId(opts[0].id);
+    });
   }, [id]);
 
   useEffect(() => {
@@ -340,7 +338,7 @@ export default function RequirementDetailPage() {
             aiEvaluation: body.data as AIEvaluation,
             updatedAt: new Date().toISOString(),
           };
-          updateRequirement(updated);
+          doUpdateRequirement(updated);
           setEvaluation(body.data as AIEvaluation);
         }
       })
@@ -368,7 +366,7 @@ export default function RequirementDetailPage() {
             aiEvaluation: body.data as AIEvaluation,
             updatedAt: new Date().toISOString(),
           };
-          updateRequirement(updated);
+          doUpdateRequirement(updated);
           setEvaluation(body.data as AIEvaluation);
           setActiveTab("evaluation");
           setToast(chatMessages.length > 0 ? "已结合对话内容重新生成评估" : "评估已重新生成");
@@ -382,33 +380,22 @@ export default function RequirementDetailPage() {
     if (!requirement) return;
     const optimizer = optimizers.find((u) => u.id === selectedOptimizerId);
     setIsSubmittingToOptimizer(true);
-    updateRequirement({
-      ...requirement,
+    updateRequirement(requirement.id, {
       status: "PENDING",
       assignedOptimizerId: optimizer?.id,
-      assignedOptimizerName: optimizer?.name,
-      updatedAt: new Date().toISOString(),
+    }).then((updated) => {
+      setRequirement(updated);
+      setToast("已提交给优化师，等待响应");
+      setIsSubmittingToOptimizer(false);
     });
-    pushLocalNotification({
-      type: "SUBMITTED",
-      title: "需求已提交给优化师",
-      body: `${requirement.clientName} → ${optimizer?.name ?? "优化师"}，请评估`,
-      link: `/requirements/${requirement.id}`,
-    });
-    setToast("已提交给优化师，等待响应");
-    setIsSubmittingToOptimizer(false);
   };
 
   const handleAccept = () => {
     if (!requirement) return;
-    updateRequirement({ ...requirement, status: "ACCEPTED", updatedAt: new Date().toISOString() });
-    pushLocalNotification({
-      type: "ACCEPTED",
-      title: "需求已接单",
-      body: `${requirement.clientName} 的需求已被接单`,
-      link: `/requirements/${requirement.id}`,
+    updateRequirement(requirement.id, { status: "ACCEPTED" }).then((updated) => {
+      setRequirement(updated);
+      router.push("/projects");
     });
-    router.push("/projects/p1");
   };
 
   const handleRejectConfirm = () => {
@@ -416,33 +403,27 @@ export default function RequirementDetailPage() {
       setToast("请填写拒绝原因");
       return;
     }
-    updateRequirement({
-      ...requirement,
+    updateRequirement(requirement.id, {
       status: "REJECTED",
       rejectionReason: rejectReason.trim(),
-      updatedAt: new Date().toISOString(),
+    }).then((updated) => {
+      setRequirement(updated);
+      setRejectMode(false);
+      setRejectReason("");
     });
-    pushLocalNotification({
-      type: "REJECTED",
-      title: "需求已拒绝",
-      body: `${requirement.clientName}：${rejectReason.trim().slice(0, 80)}`,
-      link: `/requirements/${requirement.id}`,
-    });
-    setRejectMode(false);
-    setRejectReason("");
   };
 
   const handleSaveTags = () => {
     if (!requirement) return;
     const priority = derivePriority(requirement.aiEvaluation?.success_rate);
-    updateRequirement({
-      ...requirement,
+    updateRequirement(requirement.id, {
       tags: pendingTags,
       priority,
-      updatedAt: new Date().toISOString(),
+    }).then((updated) => {
+      setRequirement(updated);
+      setTagsEditMode(false);
+      setToast("标签已保存");
     });
-    setTagsEditMode(false);
-    setToast("标签已保存");
   };
 
   const openTagsEdit = () => {
@@ -465,14 +446,7 @@ export default function RequirementDetailPage() {
     addFollowUp(fu);
     setFollowUps((prev) => [...prev, fu]);
     setFollowUpInput("");
-    if (requirement) {
-      pushLocalNotification({
-        type: "FOLLOW_UP",
-        title: "需求有新追问",
-        body: `${currentUser.name}：${content.slice(0, 60)}${content.length > 60 ? "…" : ""}`,
-        link: `/requirements/${requirement.id}`,
-      });
-    }
+    // notification is created server-side on follow-up creation
   };
 
   const handleCopyRequirementMarkdown = async () => {
@@ -821,10 +795,7 @@ export default function RequirementDetailPage() {
                 </div>
               </div>
 
-              <SimilarKnowledgeCases
-                cases={similarCases}
-                onOpenCase={(c) => setPreviewKnowledgeCase(c)}
-              />
+              {/* Similar knowledge cases — hidden until we restore async loading */}
             </div>
           </div>
         )}
@@ -1042,7 +1013,7 @@ export default function RequirementDetailPage() {
         )}
       </div>
 
-      <CaseDetail case={previewKnowledgeCase} onClose={() => setPreviewKnowledgeCase(null)} />
+      {/* CaseDetail preview — hidden until we restore async loading */}
 
       {/* Tags edit modal */}
       <AnimatePresence>

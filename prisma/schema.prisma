@@ -1,0 +1,237 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Auth (NextAuth Prisma Adapter) ────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── App Models ────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole  @default(BUSINESS)
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  requirements Requirement[] @relation("CreatorRequirements")
+  assignedReqs Requirement[] @relation("AssignedRequirements")
+  followUps    FollowUp[]
+  notifications Notification[]
+  ownedClients Client[]
+}
+
+enum UserRole {
+  BUSINESS
+  OPTIMIZER
+  ADMIN
+}
+
+model Client {
+  id           String        @id @default(cuid())
+  name         String
+  industry     String
+  region       String
+  ownerId      String
+  owner        User          @relation(fields: [ownerId], references: [id])
+  requirements Requirement[]
+  createdAt    DateTime      @default(now())
+}
+
+model Requirement {
+  id                    String              @id @default(cuid())
+  clientId              String
+  client                Client              @relation(fields: [clientId], references: [id])
+  creatorId             String
+  creator               User                @relation("CreatorRequirements", fields: [creatorId], references: [id])
+  assignedOptimizerId   String?
+  assignedOptimizer     User?               @relation("AssignedRequirements", fields: [assignedOptimizerId], references: [id])
+  rawInput              String              @db.Text
+  structuredData        Json?
+  aiEvaluation          Json?
+  status                RequirementStatus   @default(DRAFT)
+  priority              RequirementPriority @default(MEDIUM)
+  tags                  String[]
+  rejectionReason       String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  followUps FollowUp[]
+  project   Project?
+}
+
+enum RequirementStatus {
+  DRAFT
+  PENDING
+  EVALUATING
+  ACCEPTED
+  REJECTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum RequirementPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Project {
+  id            String        @id @default(cuid())
+  requirementId String        @unique
+  requirement   Requirement   @relation(fields: [requirementId], references: [id])
+  clientName    String
+  industry      String
+  mediaPlatform String
+  businessName  String
+  optimizerName String
+  status        ProjectStatus @default(STRATEGY)
+  budgetActual  Float?
+  roiActual     Float?
+  totalRecharge Float?
+  dailySpend    Float?
+  dailyRecharge Float?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  messages        Message[]
+  tasks           Task[]
+  rechargeRecords RechargeRecord[]
+}
+
+enum ProjectStatus {
+  STRATEGY
+  LAUNCHING
+  OPTIMIZING
+  REVIEWING
+  COMPLETED
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  senderId   String
+  senderName String
+  senderRole UserRole
+  content    String   @db.Text
+  type       String   @default("TEXT")
+  createdAt  DateTime @default(now())
+}
+
+model Task {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title         String
+  assigneeName  String?
+  dueDate       DateTime?
+  completed     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model FollowUp {
+  id            String   @id @default(cuid())
+  requirementId String
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  fromId        String
+  from          User     @relation(fields: [fromId], references: [id])
+  fromName      String
+  fromRole      UserRole
+  content       String   @db.Text
+  createdAt     DateTime @default(now())
+}
+
+model RechargeRecord {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectName String
+  amount      Float
+  note        String?
+  createdAt   DateTime @default(now())
+}
+
+model KnowledgeCase {
+  id              String   @id @default(cuid())
+  title           String
+  industry        String
+  mediaPlatform   String
+  region          String
+  budgetRange     String
+  targetKpi       String
+  targetRoi       Float?
+  actualRoi       Float?
+  strategySummary String   @db.Text
+  keyInsights     String[]
+  tags            String[]
+  isHighlight     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+}
+
+enum NotificationType {
+  NEW_REQUIREMENT
+  EVAL_DONE
+  FOLLOW_UP
+  ACCEPTED
+  REJECTED
+  SUBMITTED
+  RECHARGE
+  KNOWLEDGE
+}

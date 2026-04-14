@@ -57,17 +57,18 @@ export default function RequirementsPage() {
   const isBusiness = currentUser.role === "BUSINESS";
 
   useEffect(() => {
-    const all = getRequirements();
-    const visible = isBusiness ? all : all.filter((r) => r.status !== "DRAFT");
-    // 按优先级排序：HIGH → MEDIUM → LOW → 未定
-    const priorityOrder: Record<RequirementPriority, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-    visible.sort((a, b) => {
-      const pa = priorityOrder[getReqPriority(a)] ?? 3;
-      const pb = priorityOrder[getReqPriority(b)] ?? 3;
-      if (pa !== pb) return pa - pb;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    getRequirements().then((all) => {
+      const visible = isBusiness ? all : all.filter((r) => r.status !== "DRAFT");
+      // 按优先级排序：HIGH → MEDIUM → LOW → 未定
+      const priorityOrder: Record<RequirementPriority, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+      visible.sort((a, b) => {
+        const pa = priorityOrder[getReqPriority(a)] ?? 3;
+        const pb = priorityOrder[getReqPriority(b)] ?? 3;
+        if (pa !== pb) return pa - pb;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      setRequirements(visible);
     });
-    setRequirements(visible);
   }, [isBusiness]);
 
   const filtered = requirements.filter((r) => {

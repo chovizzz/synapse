@@ -1,29 +1,11 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { MOCK_USERS } from "@/lib/mock-data";
-import fs from "fs";
-import path from "path";
-
-const USERS_FILE = path.join(process.cwd(), "data", "users.json");
-
-function readRegisteredUsers(): typeof MOCK_USERS {
-  try {
-    const raw = fs.readFileSync(USERS_FILE, "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function getUsers() {
-  const registered = readRegisteredUsers();
-  // Merge mock users with registered users; registered users take precedence if same email
-  const registeredEmails = new Set(registered.map((u) => u.email));
-  const filteredMock = MOCK_USERS.filter((u) => !registeredEmails.has(u.email));
-  return [...filteredMock, ...registered];
-}
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { prisma } from "@/lib/db";
+import { compareSync } from "bcryptjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma),
   providers: [
     Credentials({
       credentials: {
@@ -31,15 +13,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "密码", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email) return null;
+        if (!credentials?.email || !credentials?.password) return null;
 
-        const users = getUsers();
-        // Demo mode: match by email, any password works
-        const user = users.find(
-          (u) => u.email === (credentials.email as string)
-        );
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email as string },
+        });
 
-        if (!user) return null;
+        if (!user?.password) return null;
+
+        const valid = compareSync(credentials.password as string, user.password);
+        if (!valid) return null;
 
         return {
           id: user.id,
@@ -55,6 +38,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+        token.name = user.name;
       }
       return token;
     },

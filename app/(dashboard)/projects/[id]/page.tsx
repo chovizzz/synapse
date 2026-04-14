@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import type { Project, Message, Task, RechargeRecord } from "@/types";
 import { generateAccountData } from "@/lib/account-data";
-import { getMessages, addMessage, getTasks, getProjects, updateProject, addRechargeRecord, pushLocalNotification } from "@/lib/store";
+import { getMessages, addMessage, getTasks, getProjects, updateProject, addRechargeRecord } from "@/lib/store";
 import { useRole } from "@/lib/role-context";
 import { generateId, formatCurrency, formatDate } from "@/lib/utils";
 import { SpendRoiChart } from "@/components/charts/SpendRoiChart";
@@ -380,33 +380,10 @@ function RechargeModal({
       return;
     }
     setSaving(true);
-    const record: RechargeRecord = {
-      id: generateId(),
-      projectId: project.id,
-      projectName: project.clientName,
-      amount: num,
-      note: note.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    };
-    addRechargeRecord(record);
-
-    const today = new Date().toISOString().slice(0, 10);
-    const prevDaily = project.updatedAt?.slice(0, 10) === today ? (project.dailyRecharge ?? 0) : 0;
-    const updated: Project = {
-      ...project,
-      totalRecharge: (project.totalRecharge ?? 0) + num,
-      dailyRecharge: prevDaily + num,
-      updatedAt: new Date().toISOString(),
-    };
-    updateProject(updated);
-    setSaving(false);
-    pushLocalNotification({
-      type: "RECHARGE",
-      title: "项目充值已记录",
-      body: `${project.clientName} +$${num.toLocaleString()}${note.trim() ? ` · ${note.trim().slice(0, 40)}` : ""}`,
-      link: `/projects/${project.id}`,
-    });
-    onSuccess(updated);
+    addRechargeRecord(project.id, num, note.trim() || undefined).then(({ project: updatedProject }) => {
+      setSaving(false);
+      onSuccess(updatedProject);
+    }).catch(() => setSaving(false));
   };
 
   return (
@@ -525,10 +502,11 @@ export default function ProjectBoardPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const proj = getProjects().find((p) => p.id === id) ?? null;
-    setProject(proj);
-    setMessages(getMessages(id));
-    setTasks(getTasks(id));
+    Promise.all([getProjects(), getMessages(id), getTasks(id)]).then(([projects, msgs, tsk]) => {
+      setProject(projects.find((p) => p.id === id) ?? null);
+      setMessages(msgs);
+      setTasks(tsk);
+    });
   }, [id]);
 
   useEffect(() => {
@@ -541,7 +519,8 @@ export default function ProjectBoardPage() {
     const trimmed = input.trim();
     if (!trimmed) return;
 
-    const msg: Message = {
+    // Optimistically add to UI, then persist
+    const optimistic: Message = {
       id: generateId(),
       projectId: id,
       senderId: currentUser.id,
@@ -551,10 +530,9 @@ export default function ProjectBoardPage() {
       type: "TEXT",
       createdAt: new Date().toISOString(),
     };
-
-    addMessage(msg);
-    setMessages((prev) => [...prev, msg]);
+    setMessages((prev) => [...prev, optimistic]);
     setInput("");
+    addMessage({ projectId: id, content: trimmed, type: "TEXT" });
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {

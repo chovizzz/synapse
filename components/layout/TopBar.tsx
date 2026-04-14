@@ -27,7 +27,9 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    const sync = () => setUnreadCount(getNotifications().filter((n) => !n.read).length);
+    const sync = () => {
+      getNotifications().then((all) => setUnreadCount(all.filter((n) => !n.read).length));
+    };
     sync();
     window.addEventListener(SYNAPSE_NOTIFICATIONS_EVENT, sync);
     return () => window.removeEventListener(SYNAPSE_NOTIFICATIONS_EVENT, sync);

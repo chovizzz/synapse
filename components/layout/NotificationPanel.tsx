@@ -44,12 +44,12 @@ export default function NotificationPanel({ open, onClose }: Props) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   useEffect(() => {
-    if (open) setNotifications(getNotifications());
+    if (open) getNotifications().then(setNotifications);
   }, [open]);
 
   useEffect(() => {
     const sync = () => {
-      if (open) setNotifications(getNotifications());
+      if (open) getNotifications().then(setNotifications);
     };
     window.addEventListener(SYNAPSE_NOTIFICATIONS_EVENT, sync);
     return () => window.removeEventListener(SYNAPSE_NOTIFICATIONS_EVENT, sync);

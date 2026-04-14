@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { BookOpen, Share2 } from "lucide-react";
-import { getKnowledgeCases, pushLocalNotification } from "@/lib/store";
+import { getKnowledgeCases } from "@/lib/store";
 import { CaseCard } from "@/components/knowledge/CaseCard";
 import { CaseFilter } from "@/components/knowledge/CaseFilter";
 import { CaseDetail } from "@/components/knowledge/CaseDetail";
@@ -32,7 +32,11 @@ function toast(msg: string) {
 
 export default function KnowledgePage() {
   const [refreshKey, setRefreshKey] = useState(0);
-  const allCases = useMemo(() => getKnowledgeCases(), [refreshKey]);
+  const [allCases, setAllCases] = useState<KnowledgeCase[]>([]);
+
+  useEffect(() => {
+    getKnowledgeCases().then(setAllCases);
+  }, [refreshKey]);
 
   const [selectedIndustry, setSelectedIndustry] = useState("");
   const [selectedMedia, setSelectedMedia] = useState("");
@@ -169,12 +173,6 @@ export default function KnowledgePage() {
         onClose={() => setShareModalOpen(false)}
         onSuccess={() => {
           setRefreshKey((k) => k + 1);
-          pushLocalNotification({
-            type: "KNOWLEDGE",
-            title: "新案例已入库",
-            body: "经验库已更新，可在列表中查看",
-            link: "/knowledge",
-          });
           toast("案例已添加");
         }}
         existingCases={allCases}

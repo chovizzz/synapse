@@ -218,8 +218,8 @@ function BusinessDashboard() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    setAllRequirements(getRequirements());
-    setAllProjects(getProjects());
+    getRequirements().then(setAllRequirements);
+    getProjects().then(setAllProjects);
   }, []);
 
   const pendingRequirements = allRequirements.filter(
@@ -326,8 +326,8 @@ function OptimizerDashboard({ optimizerName }: { optimizerName: string }) {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    setAllRequirements(getRequirements().filter((r) => r.status !== "DRAFT"));
-    setAllProjects(getProjects());
+    getRequirements().then((all) => setAllRequirements(all.filter((r) => r.status !== "DRAFT")));
+    getProjects().then(setAllProjects);
   }, []);
 
   const evaluatingReqs = allRequirements

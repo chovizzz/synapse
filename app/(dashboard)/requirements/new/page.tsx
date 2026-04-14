@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { StepIndicator } from "@/components/requirements/StepIndicator";
 import { ParseAnimation } from "@/components/requirements/ParseAnimation";
 import { useRole } from "@/lib/role-context";
-import { getRequirements, saveRequirements, getClients, getStoredUsers, getKnowledgeCases, pushLocalNotification } from "@/lib/store";
+import { getClients, getStoredUsers, getKnowledgeCases, createRequirement, updateRequirement } from "@/lib/store";
 import { generateId } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { StructuredRequirement, Requirement, Client, User } from "@/types";
@@ -96,10 +96,10 @@ function NewRequirementPageInner() {
   const [optimizers, setOptimizers] = useState<User[]>([]);
 
   useEffect(() => {
-    const allClients = getClients();
-    const allUsers = getStoredUsers();
-    setClients(allClients);
-    setOptimizers(allUsers.filter((u) => u.role === "OPTIMIZER"));
+    Promise.all([getClients(), getStoredUsers()]).then(([allClients, allUsers]) => {
+      setClients(allClients);
+      setOptimizers(allUsers.filter((u) => u.role === "OPTIMIZER"));
+    });
   }, []);
 
   // Step 1
@@ -111,7 +111,7 @@ function NewRequirementPageInner() {
   useEffect(() => {
     const refCaseId = searchParams.get("refCase");
     if (!refCaseId || rawInput) return;
-    const cases = getKnowledgeCases();
+    getKnowledgeCases().then((cases) => {
     const refCase = cases.find((k) => k.id === refCaseId);
     if (!refCase) return;
     const filled = buildRawInputFromCase(
@@ -125,6 +125,7 @@ function NewRequirementPageInner() {
       refCase.strategySummary
     );
     setRawInput(filled);
+    });
   }, [searchParams, rawInput]);
 
   // Step 2
@@ -184,29 +185,10 @@ function NewRequirementPageInner() {
     if (!editableData) return;
     setIsSubmitting(true);
 
-    const newId = `r-${generateId()}`;
-
-    const newReq: Requirement = {
-      id: newId,
+    const newReq = await createRequirement({
       clientId: selectedClientId === "__custom__" ? `c-${generateId()}` : selectedClientId,
-      clientName,
-      creatorId: currentUser.id,
-      creatorName: currentUser.name,
       rawInput,
       structuredData: editableData,
-      status: "DRAFT",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const existing = getRequirements();
-    saveRequirements([newReq, ...existing]);
-
-    pushLocalNotification({
-      type: "NEW_REQUIREMENT",
-      title: "需求草稿已创建",
-      body: `${clientName} · 已进入草稿预审，可查看 AI 评估`,
-      link: `/requirements/${newId}`,
     });
 
     // 异步触发 AI 评估，不阻塞跳转
@@ -218,22 +200,12 @@ function NewRequirementPageInner() {
       .then((r) => r.json())
       .then((json) => {
         if (json.success) {
-          const reqs = getRequirements();
-          const updated = reqs.map((r) =>
-            r.id === newId ? { ...r, aiEvaluation: json.data } : r
-          );
-          saveRequirements(updated);
-          pushLocalNotification({
-            type: "EVAL_DONE",
-            title: "AI 评估已完成",
-            body: `${clientName} 的需求评估已生成，请查看成功率与风险`,
-            link: `/requirements/${newId}`,
-          });
+          updateRequirement(newReq.id, { aiEvaluation: json.data });
         }
       })
       .catch(() => {/* 静默失败 */});
 
-    router.push(`/requirements/${newId}`);
+    router.push(`/requirements/${newReq.id}`);
   }
 
   // ── 渲染 ──────────────────────────────────────────────────────────────────

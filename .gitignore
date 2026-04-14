@@ -6,3 +6,6 @@ coverage/
 .env*
 !.env.example
 .vercel
+.env*.local
+
+/generated/prisma
