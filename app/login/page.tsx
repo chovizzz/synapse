@@ -32,7 +32,10 @@ function LoginForm() {
 
       setLoading(false);
 
+      console.log('[Login Debug] signIn result:', result);
+
       if (!result || result.ok) {
+        console.log('[Login Debug] 登录成功，准备跳转到:', callbackUrl);
         // 延迟跳转，确保 cookie 写入完成
         await new Promise((resolve) => setTimeout(resolve, 300));
         window.location.href = callbackUrl;
@@ -41,6 +44,7 @@ function LoginForm() {
       } else if (result.error === "CredentialsSignin") {
         setError("邮箱或密码不正确，请重试");
       } else {
+        console.log('[Login Debug] 未匹配的错误:', result.error);
         setError("登录失败，请检查邮箱是否正确");
       }
     } catch {
