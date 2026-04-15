@@ -16,7 +16,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const req = await prisma.requirement.findUnique({ where: { id }, include: REQ_INCLUDE });
   if (!req) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(req);
+
+  // 扁平化嵌套关联对象为前端期望的字段名
+  const formatted = {
+    ...req,
+    clientName: req.client.name,
+    creatorName: req.creator.name,
+    assignedOptimizerName: req.assignedOptimizer?.name,
+    client: undefined,
+    creator: undefined,
+    assignedOptimizer: undefined,
+  };
+
+  return NextResponse.json(formatted);
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -66,5 +78,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  return NextResponse.json(updated);
+  // 扁平化嵌套关联对象为前端期望的字段名
+  const formatted = {
+    ...updated,
+    clientName: updated.client.name,
+    creatorName: updated.creator.name,
+    assignedOptimizerName: updated.assignedOptimizer?.name,
+    client: undefined,
+    creator: undefined,
+    assignedOptimizer: undefined,
+  };
+
+  return NextResponse.json(formatted);
 }

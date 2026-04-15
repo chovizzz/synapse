@@ -21,7 +21,18 @@ export async function GET() {
     ],
   });
 
-  return NextResponse.json(requirements);
+  // 扁平化嵌套关联对象为前端期望的字段名
+  const formatted = requirements.map((req) => ({
+    ...req,
+    clientName: req.client.name,
+    creatorName: req.creator.name,
+    assignedOptimizerName: req.assignedOptimizer?.name,
+    client: undefined, // 移除嵌套对象
+    creator: undefined,
+    assignedOptimizer: undefined,
+  }));
+
+  return NextResponse.json(formatted);
 }
 
 export async function POST(req: NextRequest) {
