@@ -11,7 +11,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+  });
 
   // API routes: return 401 JSON
   if (pathname.startsWith("/api/")) {

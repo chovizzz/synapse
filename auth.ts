@@ -1,15 +1,11 @@
-import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { compareSync } from "bcryptjs";
 
-/**
- * auth() is used both in middleware (Edge) and in API routes (Node.js).
- * We keep the authorize callback lazy so Prisma is only imported in
- * Node.js context (API routes / server components), never in Edge middleware.
- */
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
-    Credentials({
+    CredentialsProvider({
+      name: "Credentials",
       credentials: {
         email: { label: "邮箱", type: "email" },
         password: { label: "密码", type: "password" },
@@ -21,12 +17,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { prisma } = await import("@/lib/db");
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email: credentials.email },
         });
 
         if (!user?.password) return null;
 
-        const valid = compareSync(credentials.password as string, user.password);
+        const valid = compareSync(credentials.password, user.password);
         if (!valid) return null;
 
         return {
@@ -39,18 +35,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as { role?: string }).role;
+        token.role = (user as any).role;
         token.name = user.name;
       }
       return token;
     },
-    session({ session, token }) {
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        (session.user as { role?: string }).role = token.role as string;
+        (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
       }
       return session;
     },
@@ -58,6 +54,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {
     signIn: "/login",
   },
-  session: { strategy: "jwt" },
-  trustHost: true,
-});
+  session: {
+    strategy: "jwt",
+  },
+  secret: process.env.AUTH_SECRET,
+};
+
