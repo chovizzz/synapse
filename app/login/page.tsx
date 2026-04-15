@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Loader2, Eye, EyeOff, Zap } from "lucide-react";
@@ -16,18 +16,6 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // 检查登录状态，已登录则直接跳转
-  useEffect(() => {
-    fetch("/api/auth/session")
-      .then((r) => r.json())
-      .then((session) => {
-        if (session?.user?.id) {
-          window.location.href = callbackUrl;
-        }
-      })
-      .catch(() => {/* 忽略 */});
-  }, [callbackUrl]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
