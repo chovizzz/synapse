@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 const PUBLIC_PATHS = ["/login", "/register", "/api/auth", "/_next", "/favicon.ico"];
 
-export async function middleware(req: NextRequest) {
+export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   // Allow public paths through
@@ -11,25 +11,25 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  const isLoggedIn = !!req.auth;
 
   // API routes: return 401 JSON
   if (pathname.startsWith("/api/")) {
-    if (!token) {
+    if (!isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.next();
   }
 
   // Page routes: redirect to login
-  if (!token) {
+  if (!isLoggedIn) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
