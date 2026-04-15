@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Loader2, Eye, EyeOff, Zap } from "lucide-react";
@@ -16,6 +16,18 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // 检查登录状态，已登录则直接跳转
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((session) => {
+        if (session?.user?.id) {
+          window.location.href = callbackUrl;
+        }
+      })
+      .catch(() => {/* 忽略 */});
+  }, [callbackUrl]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,8 +45,9 @@ function LoginForm() {
       setLoading(false);
 
       if (!result || result.ok) {
-        router.push(callbackUrl);
-        router.refresh();
+        // 延迟跳转，确保 cookie 写入完成
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        window.location.href = callbackUrl;
       } else if (result.error === "Configuration") {
         setError("服务配置异常，请联系管理员（AUTH_SECRET 未设置）");
       } else if (result.error === "CredentialsSignin") {
