@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SessionProvider } from "next-auth/react";
+import { NextAuthProvider } from "@/components/providers/NextAuthProvider";
 import { RoleProvider } from "@/lib/role-context";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { Geist } from "next/font/google";
@@ -17,11 +17,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh-CN" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
       <body>
-        <SessionProvider>
+        <NextAuthProvider>
           <ThemeProvider>
             <RoleProvider>{children}</RoleProvider>
           </ThemeProvider>
-        </SessionProvider>
+        </NextAuthProvider>
       </body>
     </html>
   );
