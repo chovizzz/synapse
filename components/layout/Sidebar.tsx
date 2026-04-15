@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, Kanban, BookOpen, X } from "lucide-react";
+import { LayoutDashboard, FileText, Kanban, BookOpen, X, Users } from "lucide-react";
 import { useRole } from "@/lib/role-context";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,10 @@ const NAV_ITEMS = [
   { label: "经验库", icon: BookOpen, href: "/knowledge" },
 ];
 
+const ADMIN_ITEMS = [
+  { label: "需求分配", icon: Users, href: "/admin/requirements" },
+];
+
 interface SidebarProps {
   onClose?: () => void;
 }
@@ -20,6 +24,8 @@ interface SidebarProps {
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const { currentUser } = useRole();
+
+  const isAdmin = currentUser.role === "ADMIN";
 
   return (
     <aside className="w-[240px] h-full flex flex-col flex-shrink-0 border-r bg-white dark:bg-[hsl(var(--card))] border-slate-200 dark:border-[hsl(var(--border))]">
@@ -66,6 +72,32 @@ export function Sidebar({ onClose }: SidebarProps) {
             </Link>
           );
         })}
+
+        {/* Admin-only section */}
+        {isAdmin && (
+          <>
+            <div className="h-px bg-slate-200 dark:bg-[hsl(var(--border))] my-2 mx-3" />
+            {ADMIN_ITEMS.map(({ label, icon: Icon, href }) => {
+              const isActive = pathname.startsWith(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400"
+                      : "text-slate-500 dark:text-[hsl(var(--muted-foreground))] hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                >
+                  <Icon size={18} />
+                  {label}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* User info */}
@@ -81,10 +113,12 @@ export function Sidebar({ onClose }: SidebarProps) {
                 "inline-block text-[10px] px-1.5 py-0.5 rounded font-medium mt-0.5",
                 currentUser.role === "BUSINESS"
                   ? "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400"
-                  : "bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400"
+                  : currentUser.role === "OPTIMIZER"
+                  ? "bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400"
+                  : "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400"
               )}
             >
-              {currentUser.role === "BUSINESS" ? "商务" : "优化师"}
+              {currentUser.role === "BUSINESS" ? "商务" : currentUser.role === "OPTIMIZER" ? "优化师" : "管理员"}
             </span>
           </div>
         </div>

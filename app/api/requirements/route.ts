@@ -7,9 +7,17 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const isOptimizer = session.user.role === "OPTIMIZER";
+  const isBusiness = session.user.role === "BUSINESS";
 
   const requirements = await prisma.requirement.findMany({
-    where: isOptimizer ? { status: { not: "DRAFT" } } : { creatorId: session.user.id },
+    where: isOptimizer 
+      ? { 
+          status: { not: "DRAFT" },
+          assignedOptimizerId: session.user.id  // 优化师只看分配给自己的
+        }
+      : isBusiness
+      ? { creatorId: session.user.id }  // 商务看自己创建的
+      : {},  // 管理员看全部
     include: {
       client: { select: { name: true, industry: true } },
       creator: { select: { name: true } },

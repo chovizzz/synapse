@@ -376,17 +376,16 @@ export default function RequirementDetailPage() {
       .finally(() => setIsReEvaluating(false));
   };
 
-  const handleSubmitToOptimizer = () => {
+  const handleSubmitToPool = () => {
     if (!requirement) return;
-    const optimizer = optimizers.find((u) => u.id === selectedOptimizerId);
     setIsSubmittingToOptimizer(true);
     updateRequirement(requirement.id, {
       status: "PENDING",
-      assignedOptimizerId: optimizer?.id,
     }).then((updated) => {
       setRequirement(updated);
-      setToast("已提交给优化师，等待响应");
+      setToast("已提交到待分配池，等待管理员分配");
       setIsSubmittingToOptimizer(false);
+      router.push("/requirements");
     });
   };
 
@@ -820,35 +819,22 @@ export default function RequirementDetailPage() {
               />
             </div>
 
-            {/* 商务预审：提交给优化师 */}
+            {/* 商务预审：提交到待分配池 */}
             {isBusiness && isDraft && (
               <div className="rounded-2xl border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/5 p-5 shadow-sm space-y-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">提交给优化师</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">提交到待分配池</h3>
                 <p className="text-xs text-slate-500 dark:text-[hsl(var(--muted-foreground))]">
-                  对 AI 评估结果满意后，选择优化师并提交。优化师将收到需求并进行接单评估。
+                  对 AI 评估结果满意后，提交需求到待分配池。管理员将为您分配合适的优化师。
                 </p>
-                <div className="space-y-2">
-                  <label className="text-xs text-slate-500 dark:text-[hsl(var(--muted-foreground))]">选择优化师</label>
-                  <select
-                    value={selectedOptimizerId}
-                    onChange={(e) => setSelectedOptimizerId(e.target.value)}
-                    className="w-full rounded-xl px-3 py-2 text-sm outline-none border border-slate-200 dark:border-[hsl(var(--border))] bg-white dark:bg-[hsl(var(--secondary))] text-slate-800 dark:text-[hsl(var(--foreground))] focus:border-violet-400 transition-colors"
-                  >
-                    <option value="">暂不指定</option>
-                    {optimizers.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
-                </div>
                 <button
-                  onClick={handleSubmitToOptimizer}
+                  onClick={handleSubmitToPool}
                   disabled={isSubmittingToOptimizer}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmittingToOptimizer ? (
                     <><Loader2 size={14} className="animate-spin" />提交中…</>
                   ) : (
-                    <><CheckCircle2 size={14} />提交给优化师</>
+                    <><CheckCircle2 size={14} />提交到待分配池</>
                   )}
                 </button>
               </div>
