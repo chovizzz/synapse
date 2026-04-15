@@ -16,14 +16,12 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
     setLoading(true);
     setError("");
-    setDebugInfo([]);
 
     try {
       const result = await signIn("credentials", {
@@ -33,28 +31,21 @@ function LoginForm() {
       });
 
       setLoading(false);
-      setDebugInfo((prev) => [...prev, `signIn result: ${JSON.stringify(result)}`]);
 
       if (!result || result.ok) {
-        setDebugInfo((prev) => [...prev, `登录成功，准备跳转到: ${callbackUrl}`]);
-        // 延迟跳转，确保 cookie 写入完成
+        // Delay to ensure cookie write completes
         await new Promise((resolve) => setTimeout(resolve, 300));
-        setDebugInfo((prev) => [...prev, `执行跳转: window.location.href = ${callbackUrl}`]);
         window.location.href = callbackUrl;
       } else if (result.error === "Configuration") {
         setError("服务配置异常，请联系管理员（AUTH_SECRET 未设置）");
       } else if (result.error === "CredentialsSignin") {
         setError("邮箱或密码不正确，请重试");
-        setDebugInfo((prev) => [...prev, `CredentialsSignin 错误`]);
       } else {
-        console.log('[Login Debug] 未匹配的错误:', result.error);
         setError("登录失败，请检查邮箱是否正确");
-        setDebugInfo((prev) => [...prev, `其他错误: ${result.error}`]);
       }
     } catch (err) {
       setLoading(false);
       setError("登录请求失败，请稍后重试");
-      setDebugInfo((prev) => [...prev, `异常: ${err}`]);
     }
   }
 
@@ -136,16 +127,6 @@ function LoginForm() {
               {loading ? "登录中…" : "登录"}
             </button>
           </form>
-
-          {/* 调试信息 */}
-          {debugInfo.length > 0 && (
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-1">
-              <p className="text-xs font-semibold text-amber-400">调试信息：</p>
-              {debugInfo.map((msg, i) => (
-                <p key={i} className="text-xs text-amber-200/90 font-mono">{msg}</p>
-              ))}
-            </div>
-          )}
 
           <div className="text-center text-sm text-slate-500 dark:text-[hsl(var(--muted-foreground))]">
             没有账号？{" "}
